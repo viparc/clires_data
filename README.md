@@ -28,7 +28,7 @@ variables (columns). The variables are
   - **amoxicillin\_g, …, unknown\_g:** mass, in g, of the 44
     antimicriobial used in the flock;
   - **amoxicillin\_g.kg, …, unknown\_g.kg:** mass, in g per kg of
-    chicken, of the antimicriobial used in the flock;
+    chicken, of the 44 antimicriobial used in the flock;
   - **completed:** boolean informing whether the flock is done (`TRUE`)
     or still ongoing (`FALSE`);
   - **CHICKENTOTAL:** total number of chicken in the farm;
