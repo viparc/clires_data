@@ -1,0 +1,13 @@
+name: "ViParc's data from CliRes"
+output_dir: "."
+navbar:
+  title: "ViParc's data from CliRes"
+  left:
+    - text: "Overview"
+      href: index.html
+    - text: "Making data"
+      href: make_data.html
+    - text: "Testing data"
+      href: test_data.html
+    - text: "Exploring data"
+      href: explore_data.html
