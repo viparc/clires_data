@@ -312,10 +312,6 @@ $(document).ready(function () {
 <pre class="r"><code>&gt; # install.packages(&quot;readr&quot;)
 &gt; viparc &lt;- readr::read_csv(&quot;https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv&quot;,
 +                           col_types = paste(c(&quot;cii&quot;, rep(&quot;l&quot;, 51), rep(&quot;d&quot;, 90), &quot;lil&quot;), collapse = &quot;&quot;))</code></pre>
-<p>The data set, as a flat rectangular CSV file, can be downloaded from <a href="https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv">here</a>:</p>
-<pre class="r"><code>&gt; # install.packages(&quot;readr&quot;)
-&gt; viparc &lt;- readr::read_csv(&quot;https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv&quot;,
-+                           col_types = paste(c(&quot;cii&quot;, rep(&quot;l&quot;, 51), rep(&quot;d&quot;, 90), &quot;lil&quot;), collapse = &quot;&quot;))</code></pre>
 <p>The data frame contains 5391 weeks of observation (rows) and 147 variables (columns). The variables are</p>
 <ul>
 <li><strong>farm:</strong> farm ID;</li>
