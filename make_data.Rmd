@@ -350,7 +350,7 @@ list(clinical_signs, amu, chicken, samples) %>%
   purrr::reduce(dplyr::left_join, by = c("USUBJID", "FLOCKSEQUENCE", "WEEK")) %>%
   dplyr::mutate(sampling = ! is.na(sampling)) %>% 
   dplyr::mutate_at(dplyr::vars(FLOCKSEQUENCE, WEEK), as.integer) %>% 
-  dplyr::arrange(USUBJID, FLOCKSEQUENCE, WEEK) %>% 
+  dplyr::arrange(USUBJID, FLOCKSEQUENCE, WEEK)  %>% 
   write.csv("data/viparc.csv", FALSE, row.names = FALSE)
 ```
 
