@@ -311,8 +311,14 @@ $(document).ready(function () {
 <p>The data set, as a flat rectangular CSV file, can be downloaded from <a href="https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv">here</a>:</p>
 <pre class="r"><code>&gt; # install.packages(&quot;readr&quot;)
 &gt; viparc &lt;- readr::read_csv(&quot;https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv&quot;,
-+                           col_types = paste(c(&quot;cii&quot;, rep(&quot;l&quot;, 51), rep(&quot;d&quot;, 90), &quot;lil&quot;), collapse = &quot;&quot;))</code></pre>
-<p>The data frame contains 5391 weeks of observation (rows) and 147 variables (columns). The variables are</p>
++                           col_types = paste(c(&quot;cii&quot;, rep(&quot;l&quot;, 6), rep(&quot;d&quot;, 45), &quot;lil&quot;), collapse = &quot;&quot;))
+Warning: Unnamed `col_types` should have the same length as `col_names`. Using smaller of the two.
+Warning in rbind(names(probs), probs_f): number of columns of result is not a multiple of vector length (arg 1)
+Warning: 248119 parsing failures.
+row # A tibble: 5 x 5 col     row col             expected actual file                                                                          expected   &lt;int&gt; &lt;chr&gt;           &lt;chr&gt;    &lt;chr&gt;  &lt;chr&gt;                                                                         actual 1     1 amoxicillin_use a double FALSE  &#39;https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv&#39; file 2     1 ampicillin_use  a double FALSE  &#39;https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv&#39; row 3     1 apramycin_use   a double FALSE  &#39;https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv&#39; col 4     1 cefadroxil_use  a double FALSE  &#39;https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv&#39; expected 5     1 cefotaxime_use  a double FALSE  &#39;https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv&#39;
+... ................. ... ..................................................................................................................... ........ ..................................................................................................................... ...... ..................................................................................................................... .... ..................................................................................................................... ... ..................................................................................................................... ... ..................................................................................................................... ........ .....................................................................................................................
+See problems(...) for more details.</code></pre>
+<p>The data frame contains 5391 weeks of observation (rows) and 57 variables (columns). The variables are</p>
 <ul>
 <li><strong>farm:</strong> farm ID;</li>
 <li><strong>flock:</strong> flock ID (in a given farm);</li>
