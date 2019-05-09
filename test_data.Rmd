@@ -27,3 +27,91 @@ knitr::opts_chunk$set(margin = TRUE, prompt = TRUE, comment = "",
 options(width = 250)
 ```
 
+## Packages
+
+Installing the required packages:
+
+```{r}
+required <- c("dplyr", "magrittr", "readr")
+to_install <- setdiff(required, row.names(installed.packages()))
+if (length(to_install)) install.packages(to_install)
+```
+
+Loading `magrittr`:
+
+```{r}
+library(magrittr)
+```
+
+## Loading the data
+
+```{r}
+viparc <- readr::read_csv("https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv",
+                          col_types = paste(c("cii", rep("l", 6), rep("d", 45), "lil"), collapse = ""))
+```
+
+## Testing for missing weeks and missing values
+
+No missing weeks:
+
+```{r}
+viparc %>%
+    dplyr::group_by(farm, flock) %>%
+    dplyr::arrange(week) %>%
+    dplyr::summarise(a = length(unique(diff(week)))) %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(a > 1)
+```
+
+Almost all the variables have missing values:
+
+```{r}
+sapply(viparc, function(x) any(is.na(x)))
+```
+
+But missing values concern only 2 weeks:
+
+```{r}
+weeks <- sort(unique(unlist(lapply(viparc, function(x) which(is.na(x))))))
+viparc[weeks, c("farm", "flock", "week")]
+```
+
+## Checking for potential outliers
+
+There does not seem te be any outliers in the number of chicken:
+
+```{r}
+hist(viparc$nb_chicken, col = "grey", main = NA, xlab = "number of chicken", ylab = "number of weeks")
+```
+
+There seems to be an error on the amount of oxytetracycline during one of the
+weeks of observation:
+
+```{r}
+viparc %>%
+  dplyr::select(dplyr::ends_with("_g")) %>% 
+  unlist() %>%
+  {.[. > 0]} %>%
+  sort(TRUE) %>%
+  head(20)
+```
+
+It concerns the following week:
+
+```{r}
+viparc %>%
+  dplyr::filter(oxytetracycline_g > 200) %>%
+  dplyr::select(farm, flock, week)
+```
+
+With this data point removed, it seems to make a little bit more sense:
+
+```{r}
+viparc %>%
+  dplyr::select(dplyr::ends_with("_g")) %>% 
+  unlist() %>%
+  {.[. > 0]} %>%
+  {.[. < 300]} %>%
+  hist(0:200, col = "grey", main = NA, xlab = "antibiotic use (g)", ylab = "number of weeks")
+```
+

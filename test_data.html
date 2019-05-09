@@ -307,8 +307,96 @@ $(document).ready(function () {
 
 </div>
 
+<div id="TOC">
+<ul>
+<li><a href="#packages">Packages</a></li>
+<li><a href="#loading-the-data">Loading the data</a></li>
+<li><a href="#testing-for-missing-weeks-and-missing-values">Testing for missing weeks and missing values</a></li>
+<li><a href="#checking-for-potential-outliers">Checking for potential outliers</a></li>
+</ul>
+</div>
 
-
+<div id="packages" class="section level2">
+<h2>Packages</h2>
+<p>Installing the required packages:</p>
+<pre class="r"><code>&gt; required &lt;- c(&quot;dplyr&quot;, &quot;magrittr&quot;, &quot;readr&quot;)
+&gt; to_install &lt;- setdiff(required, row.names(installed.packages()))
+&gt; if (length(to_install)) install.packages(to_install)</code></pre>
+<p>Loading <code>magrittr</code>:</p>
+<pre class="r"><code>&gt; library(magrittr)</code></pre>
+</div>
+<div id="loading-the-data" class="section level2">
+<h2>Loading the data</h2>
+<pre class="r"><code>&gt; viparc &lt;- readr::read_csv(&quot;https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv&quot;,
++                           col_types = paste(c(&quot;cii&quot;, rep(&quot;l&quot;, 6), rep(&quot;d&quot;, 45), &quot;lil&quot;), collapse = &quot;&quot;))</code></pre>
+</div>
+<div id="testing-for-missing-weeks-and-missing-values" class="section level2">
+<h2>Testing for missing weeks and missing values</h2>
+<p>No missing weeks:</p>
+<pre class="r"><code>&gt; viparc %&gt;%
++     dplyr::group_by(farm, flock) %&gt;%
++     dplyr::arrange(week) %&gt;%
++     dplyr::summarise(a = length(unique(diff(week)))) %&gt;%
++     dplyr::ungroup() %&gt;%
++     dplyr::filter(a &gt; 1)
+# A tibble: 0 x 3
+# … with 3 variables: farm &lt;chr&gt;, flock &lt;int&gt;, a &lt;int&gt;</code></pre>
+<p>Almost all the variables have missing values:</p>
+<pre class="r"><code>&gt; sapply(viparc, function(x) any(is.na(x)))
+                    farm                    flock                     week              respiratory                diarrhoea                      cns                  malaise              leg_lesions             sudden_death            amoxicillin_g 
+                   FALSE                    FALSE                    FALSE                    FALSE                    FALSE                    FALSE                    FALSE                    FALSE                    FALSE                     TRUE 
+            ampicillin_g              apramycin_g             cefadroxil_g             cefotaxime_g              ceftiofur_g             cephalexin_g        chloramphenicol_g          ciprofloxacin_g               colistin_g            doxycycline_g 
+                    TRUE                     TRUE                     TRUE                     TRUE                     TRUE                     TRUE                     TRUE                     TRUE                     TRUE                     TRUE 
+             enramycin_g           enrofloxacin_g           erythromycin_g            florfenicol_g             flumequine_g             gentamicin_g              josamycin_g            kitasamycin_g             lincomycin_g          marbofloxacin_g 
+                    TRUE                     TRUE                     TRUE                     TRUE                     TRUE                     TRUE                     TRUE                     TRUE                     TRUE                     TRUE 
+           methenamine_g               neomycin_g            norfloxacin_g        oxytetracycline_g          spectinomycin_g             spiramycin_g           streptomycin_g  sulfachloropyridazine_g           sulfadiazine_g       sulfadimethoxine_g 
+                    TRUE                     TRUE                     TRUE                     TRUE                     TRUE                     TRUE                     TRUE                     TRUE                     TRUE                     TRUE 
+         sulfadimidine_g          sulfaguanidin_g         sulfamethazine_g       sulfamethoxazole_g sulfamethoxypyridazine_g      sulphamethoxazole_g         sulphathiazole_g           tetracycline_g          thiamphenicol_g               tiamulin_g 
+                    TRUE                     TRUE                     TRUE                     TRUE                     TRUE                     TRUE                     TRUE                     TRUE                     TRUE                     TRUE 
+            tilmicosin_g           trimethoprim_g                tylosin_g                unknown_g                completed               nb_chicken                 sampling 
+                    TRUE                     TRUE                     TRUE                     TRUE                     TRUE                     TRUE                    FALSE </code></pre>
+<p>But missing values concern only 2 weeks:</p>
+<pre class="r"><code>&gt; weeks &lt;- sort(unique(unlist(lapply(viparc, function(x) which(is.na(x))))))
+&gt; viparc[weeks, c(&quot;farm&quot;, &quot;flock&quot;, &quot;week&quot;)]
+# A tibble: 2 x 3
+  farm   flock  week
+  &lt;chr&gt;  &lt;int&gt; &lt;int&gt;
+1 75-070     8     6
+2 75-081     3    16</code></pre>
+</div>
+<div id="checking-for-potential-outliers" class="section level2">
+<h2>Checking for potential outliers</h2>
+<p>There does not seem te be any outliers in the number of chicken:</p>
+<pre class="r"><code>&gt; hist(viparc$nb_chicken, col = &quot;grey&quot;, main = NA, xlab = &quot;number of chicken&quot;, ylab = &quot;number of weeks&quot;)</code></pre>
+<p><img src="test_data_files/figure-html/unnamed-chunk-7-1.png" width="407.736" style="display: block; margin: auto;" /></p>
+<p>There seems to be an error on the amount of oxytetracycline during one of the weeks of observation:</p>
+<pre class="r"><code>&gt; viparc %&gt;%
++   dplyr::select(dplyr::ends_with(&quot;_g&quot;)) %&gt;% 
++   unlist() %&gt;%
++   {.[. &gt; 0]} %&gt;%
++   sort(TRUE) %&gt;%
++   head(20)
+oxytetracycline_g5284      doxycycline_g246     methenamine_g3832     methenamine_g4106     methenamine_g4325     doxycycline_g3948     amoxicillin_g3903     amoxicillin_g3901     doxycycline_g3944    enrofloxacin_g4740    enrofloxacin_g4760 
+             50000.00                200.00                190.00                190.00                190.00                120.00                109.59                100.00                100.00                100.00                100.00 
+   enrofloxacin_g4765     methenamine_g3163     methenamine_g3489     methenamine_g3504     methenamine_g3525     methenamine_g3526     methenamine_g3848     methenamine_g3854     methenamine_g4028 
+               100.00                 95.00                 95.00                 95.00                 95.00                 95.00                 95.00                 95.00                 95.00 </code></pre>
+<p>It concerns the following week:</p>
+<pre class="r"><code>&gt; viparc %&gt;%
++   dplyr::filter(oxytetracycline_g &gt; 200) %&gt;%
++   dplyr::select(farm, flock, week)
+# A tibble: 1 x 3
+  farm   flock  week
+  &lt;chr&gt;  &lt;int&gt; &lt;int&gt;
+1 75-115     1     6</code></pre>
+<p>With this data point removed, it seems to make a little bit more sense:</p>
+<pre class="r"><code>&gt; viparc %&gt;%
++   dplyr::select(dplyr::ends_with(&quot;_g&quot;)) %&gt;% 
++   unlist() %&gt;%
++   {.[. &gt; 0]} %&gt;%
++   {.[. &lt; 300]} %&gt;%
++   hist(0:200, col = &quot;grey&quot;, main = NA, xlab = &quot;antibiotic use (g)&quot;, ylab = &quot;number of weeks&quot;)</code></pre>
+<p><img src="test_data_files/figure-html/unnamed-chunk-10-1.png" width="407.736" style="display: block; margin: auto;" /></p>
+</div>
 
 
 
