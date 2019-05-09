@@ -478,25 +478,16 @@ There is no missing week.</code></pre>
 +   dplyr::mutate(PACKAGEUNIT = dplyr::na_if(PACKAGEUNIT, &quot;TAB&quot;)) %&gt;% 
 +   dplyr::left_join(drug_codes, &quot;CODE&quot;) %&gt;%
 +   tidyr::replace_na(list(ANTINAME1 = &quot;unknown&quot;)) %&gt;% # because some antibiotic names are unknown
-+   dplyr::mutate(presence    = 1,
-+                 antibiotic  = proportion * AMOUTUSED,
-+                 antibiotic2 = antibiotic,
-+                 antiname2   = paste0(ANTINAME1, &quot;_g&quot;),
-+                 antiname3   = paste0(ANTINAME1, &quot;_g.kg&quot;),
-+                 ANTINAME1   = paste0(ANTINAME1, &quot;_use&quot;)) %&gt;%
-+   dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK, ANTINAME1, presence, antiname2, antibiotic, antiname3, antibiotic2) %&gt;% 
++   dplyr::mutate(antibiotic  = proportion * AMOUTUSED,
++                 ANTINAME1   = paste0(ANTINAME1, &quot;_g&quot;)) %&gt;%
++   dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK, ANTINAME1, antibiotic) %&gt;% 
 +   tibble::rowid_to_column() %&gt;% # spread() requires unique row identifiers
-+   tidyr::spread(ANTINAME1, presence) %&gt;%
-+   tidyr::spread(antiname2, antibiotic) %&gt;%
-+   tidyr::spread(antiname3, antibiotic2) %&gt;%
++   tidyr::spread(ANTINAME1, antibiotic) %&gt;%
 +   dplyr::select(-rowid) %&gt;% # we don&#39;t need rowid anymore
 +   replace(is.na(.), 0) %&gt;%
 +   dplyr::group_by(USUBJID, FLOCKSEQUENCE, WEEK) %&gt;%
 +   dplyr::summarise_all(~sum(.)) %&gt;%
-+   dplyr::mutate_at(dplyr::vars(dplyr::ends_with(&quot;_use&quot;, FALSE)), function(x) x &gt; 0) %&gt;% 
-+   dplyr::mutate_at(dplyr::vars(dplyr::ends_with(&quot;_use&quot;)), . %&gt;% ifelse(is.na(.), FALSE, .)) %&gt;% 
-+   dplyr::mutate_at(dplyr::vars(dplyr::ends_with(&quot;_g&quot;)), . %&gt;% ifelse(is.na(.), 0, .)) %&gt;% 
-+   dplyr::mutate_at(dplyr::vars(dplyr::ends_with(&quot;_g.kg&quot;)), . %&gt;% ifelse(is.na(.), 0, .))</code></pre>
++   dplyr::mutate_at(dplyr::vars(dplyr::ends_with(&quot;_g&quot;)), . %&gt;% ifelse(is.na(.), 0, .))</code></pre>
 <p>This data frame is supposed to contain one row per week per flock per farm. It happens that week 16 of flock 3 of farm 81 is missing:</p>
 <pre class="r"><code>&gt; missing_weeks(amu)
 [[1]]

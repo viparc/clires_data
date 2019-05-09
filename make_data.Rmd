@@ -93,9 +93,11 @@ missing_weeks <- function(x) {
 ## ESVAC's IU-to-mg conversion data
 
 The
-[ESVAC](https://www.ema.europa.eu/en/veterinary-regulatory/overview/antimicrobial-resistance/european-surveillance-veterinary-antimicrobial-consumption-esvac) conversion factors are
-available from the table 2 of page 62 of this [OIE](http://www.oie.int) [report](http://www.oie.int/fileadmin/Home/fr/Our_scientific_expertise/docs/pdf/AMR/Survey_on_monitoring_antimicrobial_agents_Dec2016.pdf). A copy-paste of this table without headers is
-available
+[ESVAC](https://www.ema.europa.eu/en/veterinary-regulatory/overview/antimicrobial-resistance/european-surveillance-veterinary-antimicrobial-consumption-esvac)
+conversion factors are available from the table 2 of page 62 of this
+[OIE](http://www.oie.int)
+[report](http://www.oie.int/fileadmin/Home/fr/Our_scientific_expertise/docs/pdf/AMR/Survey_on_monitoring_antimicrobial_agents_Dec2016.pdf).
+A copy-paste of this table without headers is available
 [here](https://raw.githubusercontent.com/viparc/clires_data/master/raw_data/esvac.txt).
 Let's download this file:
 
@@ -263,25 +265,16 @@ amu <- surveillance[antimicrobial] %>%
   dplyr::mutate(PACKAGEUNIT = dplyr::na_if(PACKAGEUNIT, "TAB")) %>% 
   dplyr::left_join(drug_codes, "CODE") %>%
   tidyr::replace_na(list(ANTINAME1 = "unknown")) %>% # because some antibiotic names are unknown
-  dplyr::mutate(presence    = 1,
-                antibiotic  = proportion * AMOUTUSED,
-                antibiotic2 = antibiotic,
-                antiname2   = paste0(ANTINAME1, "_g"),
-                antiname3   = paste0(ANTINAME1, "_g.kg"),
-                ANTINAME1   = paste0(ANTINAME1, "_use")) %>%
-  dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK, ANTINAME1, presence, antiname2, antibiotic, antiname3, antibiotic2) %>% 
+  dplyr::mutate(antibiotic  = proportion * AMOUTUSED,
+                ANTINAME1   = paste0(ANTINAME1, "_g")) %>%
+  dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK, ANTINAME1, antibiotic) %>% 
   tibble::rowid_to_column() %>% # spread() requires unique row identifiers
-  tidyr::spread(ANTINAME1, presence) %>%
-  tidyr::spread(antiname2, antibiotic) %>%
-  tidyr::spread(antiname3, antibiotic2) %>%
+  tidyr::spread(ANTINAME1, antibiotic) %>%
   dplyr::select(-rowid) %>% # we don't need rowid anymore
   replace(is.na(.), 0) %>%
   dplyr::group_by(USUBJID, FLOCKSEQUENCE, WEEK) %>%
   dplyr::summarise_all(~sum(.)) %>%
-  dplyr::mutate_at(dplyr::vars(dplyr::ends_with("_use", FALSE)), function(x) x > 0) %>% 
-  dplyr::mutate_at(dplyr::vars(dplyr::ends_with("_use")), . %>% ifelse(is.na(.), FALSE, .)) %>% 
-  dplyr::mutate_at(dplyr::vars(dplyr::ends_with("_g")), . %>% ifelse(is.na(.), 0, .)) %>% 
-  dplyr::mutate_at(dplyr::vars(dplyr::ends_with("_g.kg")), . %>% ifelse(is.na(.), 0, .))
+  dplyr::mutate_at(dplyr::vars(dplyr::ends_with("_g")), . %>% ifelse(is.na(.), 0, .))
 ```
 
 This data frame is supposed to contain one row per week per flock per farm. It
