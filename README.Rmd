@@ -22,7 +22,7 @@ viparc <- readr::read_csv("https://raw.githubusercontent.com/viparc/clires_data/
 ```
 
 ```{r include = FALSE}
-nb_ab <- sum(grepl("_use", names(viparc))) - 1
+nb_ab <- sum(grepl("_g", names(viparc))) - 1
 ```
 
 The data frame contains `r nrow(viparc)` weeks of observation (rows) and
