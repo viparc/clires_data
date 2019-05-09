@@ -312,18 +312,22 @@ $(document).ready(function () {
 <pre class="r"><code>&gt; # install.packages(&quot;readr&quot;)
 &gt; viparc &lt;- readr::read_csv(&quot;https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv&quot;,
 +                           col_types = paste(c(&quot;cii&quot;, rep(&quot;l&quot;, 51), rep(&quot;d&quot;, 90), &quot;lil&quot;), collapse = &quot;&quot;))</code></pre>
+<p>The data set, as a flat rectangular CSV file, can be downloaded from <a href="https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv">here</a>:</p>
+<pre class="r"><code>&gt; # install.packages(&quot;readr&quot;)
+&gt; viparc &lt;- readr::read_csv(&quot;https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv&quot;,
++                           col_types = paste(c(&quot;cii&quot;, rep(&quot;l&quot;, 51), rep(&quot;d&quot;, 90), &quot;lil&quot;), collapse = &quot;&quot;))</code></pre>
 <p>The data frame contains 5391 weeks of observation (rows) and 147 variables (columns). The variables are</p>
 <ul>
-<li><strong>USUBJID:</strong> farm ID;</li>
-<li><strong>FLOCKSEQUENCE:</strong> flock ID (in a given farm);</li>
-<li><strong>WEEK:</strong> week number (in a given flock of a given farm);</li>
-<li><strong>RESPIRATORY, …, SUDDENDEATH:</strong> presence/absence of 6 clinical signs in the flock;</li>
-<li><strong>amoxicillin_use, …, unknown_use:</strong> presence/absence of 44 antimicrobials in the flock;</li>
+<li><strong>farm:</strong> farm ID;</li>
+<li><strong>flock:</strong> flock ID (in a given farm);</li>
+<li><strong>week:</strong> week number (in a given flock of a given farm);</li>
+<li><strong>respiratory, …, sudden_death:</strong> presence (<code>TRUE</code>) / absence (<code>FALSE</code>) of 6 clinical signs in the flock;</li>
+<li><strong>amoxicillin_use, …, unknown_use:</strong> presence (<code>TRUE</code>) / absence (<code>FALSE</code>) of 44 antimicrobials in the flock;</li>
 <li><strong>amoxicillin_g, …, unknown_g:</strong> mass, in g, of the 44 antimicriobial used in the flock;</li>
 <li><strong>amoxicillin_g.kg, …, unknown_g.kg:</strong> mass, in g per kg of chicken, of the 44 antimicriobial used in the flock;</li>
 <li><strong>completed:</strong> boolean informing whether the flock is done (<code>TRUE</code>) or still ongoing (<code>FALSE</code>);</li>
-<li><strong>CHICKENTOTAL:</strong> total number of chicken in the farm;</li>
-<li><strong>sampling:</strong> boolean informing whether there is feces sampling during the week.</li>
+<li><strong>nb_chicken:</strong> total number of chicken in the farm;</li>
+<li><strong>sampling:</strong> boolean informing whether there is feces sampling during the week (<code>TRUE</code>) or not (<code>FALSE</code>).</li>
 </ul>
 
 
