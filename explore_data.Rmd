@@ -27,3 +27,250 @@ knitr::opts_chunk$set(margin = TRUE, prompt = TRUE, comment = "",
 options(width = 250)
 ```
 
+## Packages
+
+Installing the required packages:
+
+```{r}
+required <- c("dplyr", "magrittr", "readr")
+to_install <- setdiff(required, row.names(installed.packages()))
+if (length(to_install)) install.packages(to_install)
+```
+
+Loading `magrittr`:
+
+```{r}
+library(magrittr)
+```
+
+## Loading the data
+
+```{r}
+viparc <- readr::read_csv("https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv",
+                          col_types = paste(c("cii", rep("l", 6), rep("d", 45), "lil"), collapse = ""))
+```
+
+## Numbers of farms, flocks and weeks
+
+There are **`r length(unique(viparc$farm))` farms** in the study:
+
+```{r}
+length(unique(viparc$farm))
+```
+
+And a total of **`r nrow(unique(dplyr::select(viparc, farm, flock)))` flocks**:
+
+```{r}
+viparc %>% 
+  dplyr::select(farm, flock) %>% 
+  unique() %>% 
+  nrow()
+```
+
+Of which there are **`r nrow(unique(dplyr::select(dplyr::filter(viparc, completed), farm, flock)))` completed flocks** :
+
+```{r}
+viparc %>% 
+  dplyr::filter(completed) %>% 
+  dplyr::select(farm, flock) %>% 
+  unique() %>% 
+  nrow()
+```
+
+This represents **`r nrow(viparc)` weeks** of observation:
+
+```{r}
+nrow(viparc)
+```
+
+And **`r nrow(dplyr::filter(viparc, completed))` weeks** for completed flocks:
+
+```{r}
+nrow(dplyr::filter(viparc, completed))
+```
+
+The distribution of the number of flocks per farm:
+
+```{r}
+viparc %>% 
+  dplyr::select(farm, flock) %>% 
+  unique() %>% 
+  dplyr::group_by(farm) %>%
+  dplyr::tally() %>%
+  dplyr::ungroup() %$% 
+  hist(n, 0:12, col = "grey", main = NA, xlab = "number of flocks", ylab = "number of farms")
+```
+
+or:
+
+```{r}
+viparc %>% 
+  dplyr::select(farm, flock) %>% 
+  unique() %>% 
+  dplyr::group_by(farm) %>%
+  dplyr::tally() %>%
+  dplyr::ungroup() %$%
+  table(n)
+```
+
+The same thing, considering only completed flocks:
+
+```{r}
+viparc %>% 
+  dplyr::filter(completed) %>% 
+  dplyr::select(farm, flock) %>% 
+  unique() %>% 
+  dplyr::group_by(farm) %>%
+  dplyr::tally() %>%
+  dplyr::ungroup() %$% 
+  hist(n, 0:12, col = "grey", main = NA, xlab = "number of completed flocks", ylab = "number of farms")
+```
+
+or:
+
+```{r}
+viparc %>%
+  dplyr::filter(completed) %>% 
+  dplyr::select(farm, flock) %>% 
+  unique() %>% 
+  dplyr::group_by(farm) %>%
+  dplyr::tally() %>%
+  dplyr::ungroup() %$%
+  table(n)
+```
+
+The distribution of the number of weeks per flock:
+
+```{r}
+viparc %>% 
+  dplyr::group_by(farm, flock) %>%
+  dplyr::tally() %>%
+  dplyr::ungroup() %$% 
+  hist(n, 0:27, col = "grey", main = NA, xlab = "number of weeks", ylab = "number of flocks")
+```
+
+```{r}
+viparc %>% 
+  dplyr::group_by(farm, flock) %>%
+  dplyr::tally() %>%
+  dplyr::ungroup() %$% 
+  table(n)
+```
+
+The same thing, considering only the completed flocks:
+
+```{r}
+viparc %>% 
+  dplyr::filter(completed) %>% 
+  dplyr::group_by(farm, flock) %>%
+  dplyr::tally() %>%
+  dplyr::ungroup() %$% 
+  hist(n, 0:27, col = "grey", main = NA, xlab = "number of weeks", ylab = "number of flocks")
+```
+
+```{r}
+viparc %>% 
+  dplyr::filter(completed) %>% 
+  dplyr::group_by(farm, flock) %>%
+  dplyr::tally() %>%
+  dplyr::ungroup() %$% 
+  table(n)
+```
+
+## Number of chicken
+
+The distribution of the flocks sizes:
+
+```{r}
+viparc %>% 
+  dplyr::filter(week < 2) %$%
+  hist(nb_chicken, nclass = 30, col = "grey", main = NA, xlab = "number of chicken", ylab = "number of flocks")
+```
+
+Or:
+
+```{r}
+viparc %>% 
+  dplyr::filter(week < 2) %$%
+  head(sort(nb_chicken), 15)
+```
+
+The distribution of the farms sizes:
+
+```{r}
+viparc %>% 
+  dplyr::filter(week < 2) %>%
+  dplyr::group_by(farm) %>% 
+  dplyr::summarise(size = mean(nb_chicken)) %>%
+  dplyr::ungroup() %$% 
+  hist(size, col = "grey", main = NA, xlab = "number of chicken", ylab = "number of farms")
+```
+
+Or:
+
+```{r}
+viparc %>% 
+  dplyr::filter(week < 2) %>%
+  dplyr::group_by(farm) %>% 
+  dplyr::summarise(size = mean(nb_chicken)) %>%
+  dplyr::ungroup() %$% 
+  head(round(sort(size)), 15)
+```
+
+## Feces samplings
+
+Not all the flocks are sampled 3 times:
+
+```{r}
+(samplings <- viparc %>% 
+  dplyr::select(farm, flock, completed, sampling) %>% 
+  dplyr::group_by(farm, flock) %>%
+  dplyr::summarise(completed = mean(completed), sampling = sum(sampling, na.rm = TRUE)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::mutate(completed = completed > 0))
+```
+
+```{r}
+with(samplings, table(completed, sampling))
+```
+
+The reasons for less than 3 samplings seems to be
+
+* the flock is uncomplete
+* the flock died prematuraly
+* some samplings were missed
+
+Let's explore a bit more by focusing on the completed flocks and see whether
+the flocks with less than 3 samplings tend to be short ones (i.e. suggesting
+premature death of the flock):
+
+```{r}
+hist2 <- function(x, ...) hist(x, breaks = 0:30, ...)
+
+# Let's plot the durations of the completed flocks:
+
+viparc %>%
+  dplyr::filter(completed) %>% 
+  dplyr::group_by(farm, flock) %>%
+  dplyr::tally() %>%
+  dplyr::ungroup() %$%
+  hist2(n, col = "grey", xlab = "duration (weeks)", ylab = "number of flocks", main = NA)
+
+# Let's now plot the durations of the completed flocks with 1 sample only:
+
+samplings %>% 
+  dplyr::filter(completed, sampling == 1) %$% 
+  purrr::map2(farm, flock, function(x, y) nrow(dplyr::filter(viparc, farm == x, flock == y))) %>% 
+  unlist() %>% 
+  hist2(col = adjustcolor("red", .5), add = TRUE)
+
+# And the durations of the completed flocks with 2 samples only:
+
+samplings %>% 
+  dplyr::filter(completed, sampling == 2) %$% 
+  purrr::map2(farm, flock, function(x, y) nrow(dplyr::filter(viparc, farm == x, flock == y))) %>% 
+  unlist() %>% 
+  hist2(col = adjustcolor("blue", .5), add = TRUE)
+
+legend("left", c("1 sampling only", "2 samplings only"), fill = adjustcolor(c("red", "blue"), .5), bty = "n")
+```

@@ -307,8 +307,223 @@ $(document).ready(function () {
 
 </div>
 
+<div id="TOC">
+<ul>
+<li><a href="#packages">Packages</a></li>
+<li><a href="#loading-the-data">Loading the data</a></li>
+<li><a href="#numbers-of-farms-flocks-and-weeks">Numbers of farms, flocks and weeks</a></li>
+<li><a href="#number-of-chicken">Number of chicken</a></li>
+<li><a href="#feces-samplings">Feces samplings</a></li>
+</ul>
+</div>
 
-
+<div id="packages" class="section level2">
+<h2>Packages</h2>
+<p>Installing the required packages:</p>
+<pre class="r"><code>&gt; required &lt;- c(&quot;dplyr&quot;, &quot;magrittr&quot;, &quot;readr&quot;)
+&gt; to_install &lt;- setdiff(required, row.names(installed.packages()))
+&gt; if (length(to_install)) install.packages(to_install)</code></pre>
+<p>Loading <code>magrittr</code>:</p>
+<pre class="r"><code>&gt; library(magrittr)</code></pre>
+</div>
+<div id="loading-the-data" class="section level2">
+<h2>Loading the data</h2>
+<pre class="r"><code>&gt; viparc &lt;- readr::read_csv(&quot;https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv&quot;,
++                           col_types = paste(c(&quot;cii&quot;, rep(&quot;l&quot;, 6), rep(&quot;d&quot;, 45), &quot;lil&quot;), collapse = &quot;&quot;))</code></pre>
+</div>
+<div id="numbers-of-farms-flocks-and-weeks" class="section level2">
+<h2>Numbers of farms, flocks and weeks</h2>
+<p>There are <strong>114 farms</strong> in the study:</p>
+<pre class="r"><code>&gt; length(unique(viparc$farm))
+[1] 114</code></pre>
+<p>And a total of <strong>315 flocks</strong>:</p>
+<pre class="r"><code>&gt; viparc %&gt;% 
++   dplyr::select(farm, flock) %&gt;% 
++   unique() %&gt;% 
++   nrow()
+[1] 315</code></pre>
+<p>Of which there are <strong>287 completed flocks</strong> :</p>
+<pre class="r"><code>&gt; viparc %&gt;% 
++   dplyr::filter(completed) %&gt;% 
++   dplyr::select(farm, flock) %&gt;% 
++   unique() %&gt;% 
++   nrow()
+[1] 287</code></pre>
+<p>This represents <strong>5391 weeks</strong> of observation:</p>
+<pre class="r"><code>&gt; nrow(viparc)
+[1] 5391</code></pre>
+<p>And <strong>5103 weeks</strong> for completed flocks:</p>
+<pre class="r"><code>&gt; nrow(dplyr::filter(viparc, completed))
+[1] 5103</code></pre>
+<p>The distribution of the number of flocks per farm:</p>
+<pre class="r"><code>&gt; viparc %&gt;% 
++   dplyr::select(farm, flock) %&gt;% 
++   unique() %&gt;% 
++   dplyr::group_by(farm) %&gt;%
++   dplyr::tally() %&gt;%
++   dplyr::ungroup() %$% 
++   hist(n, 0:12, col = &quot;grey&quot;, main = NA, xlab = &quot;number of flocks&quot;, ylab = &quot;number of farms&quot;)</code></pre>
+<p><img src="explore_data_files/figure-html/unnamed-chunk-9-1.png" width="407.736" style="display: block; margin: auto;" /></p>
+<p>or:</p>
+<pre class="r"><code>&gt; viparc %&gt;% 
++   dplyr::select(farm, flock) %&gt;% 
++   unique() %&gt;% 
++   dplyr::group_by(farm) %&gt;%
++   dplyr::tally() %&gt;%
++   dplyr::ungroup() %$%
++   table(n)
+n
+ 1  2  3  4  5  6  7  8 12 
+46 22 10 13 10  6  3  3  1 </code></pre>
+<p>The same thing, considering only completed flocks:</p>
+<pre class="r"><code>&gt; viparc %&gt;% 
++   dplyr::filter(completed) %&gt;% 
++   dplyr::select(farm, flock) %&gt;% 
++   unique() %&gt;% 
++   dplyr::group_by(farm) %&gt;%
++   dplyr::tally() %&gt;%
++   dplyr::ungroup() %$% 
++   hist(n, 0:12, col = &quot;grey&quot;, main = NA, xlab = &quot;number of completed flocks&quot;, ylab = &quot;number of farms&quot;)</code></pre>
+<p><img src="explore_data_files/figure-html/unnamed-chunk-11-1.png" width="407.736" style="display: block; margin: auto;" /></p>
+<p>or:</p>
+<pre class="r"><code>&gt; viparc %&gt;%
++   dplyr::filter(completed) %&gt;% 
++   dplyr::select(farm, flock) %&gt;% 
++   unique() %&gt;% 
++   dplyr::group_by(farm) %&gt;%
++   dplyr::tally() %&gt;%
++   dplyr::ungroup() %$%
++   table(n)
+n
+ 1  2  3  4  5  6  7  8 10 
+37 23 12 14 12  2  2  2  1 </code></pre>
+<p>The distribution of the number of weeks per flock:</p>
+<pre class="r"><code>&gt; viparc %&gt;% 
++   dplyr::group_by(farm, flock) %&gt;%
++   dplyr::tally() %&gt;%
++   dplyr::ungroup() %$% 
++   hist(n, 0:27, col = &quot;grey&quot;, main = NA, xlab = &quot;number of weeks&quot;, ylab = &quot;number of flocks&quot;)</code></pre>
+<p><img src="explore_data_files/figure-html/unnamed-chunk-13-1.png" width="407.736" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>&gt; viparc %&gt;% 
++   dplyr::group_by(farm, flock) %&gt;%
++   dplyr::tally() %&gt;%
++   dplyr::ungroup() %$% 
++   table(n)
+n
+ 3  5  7  8  9 10 11 13 14 15 16 17 18 19 20 21 22 23 24 25 27 
+ 2  2  6 10  6  6  1  4 10 29 38 37 46 40 29 19 10  9  7  3  1 </code></pre>
+<p>The same thing, considering only the completed flocks:</p>
+<pre class="r"><code>&gt; viparc %&gt;% 
++   dplyr::filter(completed) %&gt;% 
++   dplyr::group_by(farm, flock) %&gt;%
++   dplyr::tally() %&gt;%
++   dplyr::ungroup() %$% 
++   hist(n, 0:27, col = &quot;grey&quot;, main = NA, xlab = &quot;number of weeks&quot;, ylab = &quot;number of flocks&quot;)</code></pre>
+<p><img src="explore_data_files/figure-html/unnamed-chunk-15-1.png" width="407.736" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>&gt; viparc %&gt;% 
++   dplyr::filter(completed) %&gt;% 
++   dplyr::group_by(farm, flock) %&gt;%
++   dplyr::tally() %&gt;%
++   dplyr::ungroup() %$% 
++   table(n)
+n
+ 3  5  7  8  9 10 11 13 14 15 16 17 18 19 20 21 22 23 24 25 27 
+ 1  2  1  2  2  4  1  3 10 27 37 36 43 40 29 19 10  9  7  3  1 </code></pre>
+</div>
+<div id="number-of-chicken" class="section level2">
+<h2>Number of chicken</h2>
+<p>The distribution of the flocks sizes:</p>
+<pre class="r"><code>&gt; viparc %&gt;% 
++   dplyr::filter(week &lt; 2) %$%
++   hist(nb_chicken, nclass = 30, col = &quot;grey&quot;, main = NA, xlab = &quot;number of chicken&quot;, ylab = &quot;number of flocks&quot;)</code></pre>
+<p><img src="explore_data_files/figure-html/unnamed-chunk-17-1.png" width="407.736" style="display: block; margin: auto;" /></p>
+<p>Or:</p>
+<pre class="r"><code>&gt; viparc %&gt;% 
++   dplyr::filter(week &lt; 2) %$%
++   head(sort(nb_chicken), 15)
+ [1]  50  72  93  96  96  97  97  97  98  98  99  99 100 100 100</code></pre>
+<p>The distribution of the farms sizes:</p>
+<pre class="r"><code>&gt; viparc %&gt;% 
++   dplyr::filter(week &lt; 2) %&gt;%
++   dplyr::group_by(farm) %&gt;% 
++   dplyr::summarise(size = mean(nb_chicken)) %&gt;%
++   dplyr::ungroup() %$% 
++   hist(size, col = &quot;grey&quot;, main = NA, xlab = &quot;number of chicken&quot;, ylab = &quot;number of farms&quot;)</code></pre>
+<p><img src="explore_data_files/figure-html/unnamed-chunk-19-1.png" width="407.736" style="display: block; margin: auto;" /></p>
+<p>Or:</p>
+<pre class="r"><code>&gt; viparc %&gt;% 
++   dplyr::filter(week &lt; 2) %&gt;%
++   dplyr::group_by(farm) %&gt;% 
++   dplyr::summarise(size = mean(nb_chicken)) %&gt;%
++   dplyr::ungroup() %$% 
++   head(round(sort(size)), 15)
+ [1]  72  83  98 100 101 101 102 102 108 112 122 124 126 139 145</code></pre>
+</div>
+<div id="feces-samplings" class="section level2">
+<h2>Feces samplings</h2>
+<p>Not all the flocks are sampled 3 times:</p>
+<pre class="r"><code>&gt; (samplings &lt;- viparc %&gt;% 
++   dplyr::select(farm, flock, completed, sampling) %&gt;% 
++   dplyr::group_by(farm, flock) %&gt;%
++   dplyr::summarise(completed = mean(completed), sampling = sum(sampling, na.rm = TRUE)) %&gt;% 
++   dplyr::ungroup() %&gt;% 
++   dplyr::mutate(completed = completed &gt; 0))
+# A tibble: 315 x 4
+   farm   flock completed sampling
+   &lt;chr&gt;  &lt;int&gt; &lt;lgl&gt;        &lt;int&gt;
+ 1 75-001     1 TRUE             3
+ 2 75-001     2 TRUE             3
+ 3 75-001     3 TRUE             3
+ 4 75-001     4 TRUE             3
+ 5 75-001     5 TRUE             3
+ 6 75-001     6 TRUE             3
+ 7 75-002     1 TRUE             3
+ 8 75-002     2 TRUE             3
+ 9 75-002     3 TRUE             3
+10 75-002     4 TRUE             3
+# … with 305 more rows</code></pre>
+<pre class="r"><code>&gt; with(samplings, table(completed, sampling))
+         sampling
+completed   0   1   2   3
+    FALSE   0   6  17   5
+    TRUE    3   7  21 255</code></pre>
+<p>The reasons for less than 3 samplings seems to be</p>
+<ul>
+<li>the flock is uncomplete</li>
+<li>the flock died prematuraly</li>
+<li>some samplings were missed</li>
+</ul>
+<p>Let’s explore a bit more by focusing on the completed flocks and see whether the flocks with less than 3 samplings tend to be short ones (i.e. suggesting premature death of the flock):</p>
+<pre class="r"><code>&gt; hist2 &lt;- function(x, ...) hist(x, breaks = 0:30, ...)
+&gt; 
+&gt; # Let&#39;s plot the durations of the completed flocks:
+&gt; 
+&gt; viparc %&gt;%
++   dplyr::filter(completed) %&gt;% 
++   dplyr::group_by(farm, flock) %&gt;%
++   dplyr::tally() %&gt;%
++   dplyr::ungroup() %$%
++   hist2(n, col = &quot;grey&quot;, xlab = &quot;duration (weeks)&quot;, ylab = &quot;number of flocks&quot;, main = NA)
+&gt; 
+&gt; # Let&#39;s now plot the durations of the completed flocks with 1 sample only:
+&gt; 
+&gt; samplings %&gt;% 
++   dplyr::filter(completed, sampling == 1) %$% 
++   purrr::map2(farm, flock, function(x, y) nrow(dplyr::filter(viparc, farm == x, flock == y))) %&gt;% 
++   unlist() %&gt;% 
++   hist2(col = adjustcolor(&quot;red&quot;, .5), add = TRUE)
+&gt; 
+&gt; # And the durations of the completed flocks with 2 samples only:
+&gt; 
+&gt; samplings %&gt;% 
++   dplyr::filter(completed, sampling == 2) %$% 
++   purrr::map2(farm, flock, function(x, y) nrow(dplyr::filter(viparc, farm == x, flock == y))) %&gt;% 
++   unlist() %&gt;% 
++   hist2(col = adjustcolor(&quot;blue&quot;, .5), add = TRUE)
+&gt; 
+&gt; legend(&quot;left&quot;, c(&quot;1 sampling only&quot;, &quot;2 samplings only&quot;), fill = adjustcolor(c(&quot;red&quot;, &quot;blue&quot;), .5), bty = &quot;n&quot;)</code></pre>
+<p><img src="explore_data_files/figure-html/unnamed-chunk-23-1.png" width="407.736" style="display: block; margin: auto;" /></p>
+</div>
 
 
 
