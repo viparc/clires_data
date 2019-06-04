@@ -70,9 +70,7 @@ h6 {
 
 <link rel="stylesheet" href="style.css" type="text/css" />
 
-</head>
 
-<body>
 
 <style type = "text/css">
 .main-container {
@@ -191,8 +189,6 @@ $(document).ready(function () {
 });
 </script>
 
-<div class="container-fluid main-container">
-
 <!-- tabsets -->
 
 <style type="text/css">
@@ -266,6 +262,15 @@ $(document).ready(function () {
 
 
 
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+
 
 <div class="navbar navbar-default  navbar-fixed-top" role="navigation">
   <div class="container">
@@ -327,8 +332,10 @@ $(document).ready(function () {
 <div id="clires-excel-files" class="section level2">
 <h2>CliRes excel files</h2>
 <p>The CliRes data are in 2 excel files, each with many tabs. One of these files contains general information and the other one contains the surveillance data:</p>
-<pre class="r"><code>&gt; general_data &lt;- &quot;https://www.dropbox.com/s/gt6k1m781537vd2/16-4-2019-_18ZN_Category_V1_Data.xls?dl=0&quot;
-&gt; surveillance_data &lt;- &quot;https://www.dropbox.com/s/7gjt77eltpm4ygw/16-4-2019-_18ZN_V1_Data.xls?dl=0&quot;</code></pre>
+<pre class="r"><code>&gt; # general_data &lt;- &quot;https://www.dropbox.com/s/gt6k1m781537vd2/16-4-2019-_18ZN_Category_V1_Data.xls?dl=0&quot;
+&gt; # surveillance_data &lt;- &quot;https://www.dropbox.com/s/7gjt77eltpm4ygw/16-4-2019-_18ZN_V1_Data.xls?dl=0&quot;
+&gt; general_data &lt;- &quot;https://www.dropbox.com/s/3hfnhd39fxjmcnh/20-5-2019-_18ZN_Category_V1_Data.xls?dl=0&quot;
+&gt; surveillance_data &lt;- &quot;https://www.dropbox.com/s/4kk6qewmntw3q5o/20-5-2019-_18ZN_V1_Data.xls?dl=0&quot;</code></pre>
 </div>
 <div id="packages" class="section level2">
 <h2>Packages</h2>
@@ -465,7 +472,29 @@ $(document).ready(function () {
 +   dplyr::mutate(WEEK = ifelse(USUBJID == &quot;75-021&quot; &amp; FLOCKSEQUENCE == &quot;06&quot; &amp; WEEK == 19, 10, WEEK))</code></pre>
 <p>This data frame contains all the weeks of all the flocks of all the farms. There is no missing weeks:</p>
 <pre class="r"><code>&gt; missing_weeks(clinical_signs)
-There is no missing week.</code></pre>
+[[1]]
+# A tibble: 19 x 3
+   USUBJID FLOCKSEQUENCE  WEEK
+   &lt;chr&gt;   &lt;chr&gt;         &lt;dbl&gt;
+ 1 75-021  06                1
+ 2 75-021  06                2
+ 3 75-021  06                3
+ 4 75-021  06                4
+ 5 75-021  06                5
+ 6 75-021  06                6
+ 7 75-021  06                7
+ 8 75-021  06                8
+ 9 75-021  06                9
+10 75-021  06               10
+11 75-021  06               11
+12 75-021  06               12
+13 75-021  06               13
+14 75-021  06               14
+15 75-021  06               15
+16 75-021  06               16
+17 75-021  06               17
+18 75-021  06               18
+19 75-021  06               10</code></pre>
 </div>
 <div id="antimicrobial-usage" class="section level3">
 <h3>Antimicrobial usage</h3>
@@ -490,28 +519,7 @@ There is no missing week.</code></pre>
 +   dplyr::mutate_at(dplyr::vars(dplyr::ends_with(&quot;_g&quot;)), . %&gt;% ifelse(is.na(.), 0, .))</code></pre>
 <p>This data frame is supposed to contain one row per week per flock per farm. It happens that week 16 of flock 3 of farm 81 is missing:</p>
 <pre class="r"><code>&gt; missing_weeks(amu)
-[[1]]
-# A tibble: 17 x 3
-# Groups:   USUBJID, FLOCKSEQUENCE [1]
-   USUBJID FLOCKSEQUENCE  WEEK
-   &lt;chr&gt;   &lt;chr&gt;         &lt;dbl&gt;
- 1 75-081  03                1
- 2 75-081  03                2
- 3 75-081  03                3
- 4 75-081  03                4
- 5 75-081  03                5
- 6 75-081  03                6
- 7 75-081  03                7
- 8 75-081  03                8
- 9 75-081  03                9
-10 75-081  03               10
-11 75-081  03               11
-12 75-081  03               12
-13 75-081  03               13
-14 75-081  03               14
-15 75-081  03               15
-16 75-081  03               17
-17 75-081  03               18</code></pre>
+There is no missing week.</code></pre>
 <p>but that won’t be a problem when it’s merged with <code>clinical_signs</code> below.</p>
 </div>
 <div id="chicken-data" class="section level3">
@@ -565,7 +573,7 @@ There is no missing week.</code></pre>
 <pre class="r"><code>&gt; dplyr::anti_join(chicken, clinical_signs, c(&quot;USUBJID&quot;, &quot;FLOCKSEQUENCE&quot;, &quot;WEEK&quot;)) %&gt;% 
 +   nrow() %&gt;% 
 +   `&lt;`(1)
-[1] TRUE</code></pre>
+[1] FALSE</code></pre>
 <p>We are ready for the merging and writing to disk:</p>
 <pre class="r"><code>&gt; if (!dir.exists(&quot;data&quot;)) dir.create(&quot;data&quot;)
 &gt; list(clinical_signs, amu, chicken, samples) %&gt;%
