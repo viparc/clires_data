@@ -354,6 +354,7 @@ list(clinical_signs, amu, chicken, samples) %>%
                 leg_lesions  = LEGLESIONS,
                 sudden_death = SUDDENDEATH,
                 nb_chicken   = CHICKENTOTAL) %>% 
+  unique() %>% # week 10 of flock 6 of farm 75-021 is duplicated
   write.csv("data/viparc.csv", FALSE, row.names = FALSE)
 ```
 

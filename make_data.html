@@ -7,6 +7,7 @@
 <meta charset="utf-8" />
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
 
@@ -244,18 +245,6 @@ $(document).ready(function () {
   display: none;
 }
 </style>
-
-<script>
-$(document).ready(function () {
-  window.buildTabsets("TOC");
-});
-
-$(document).ready(function () {
-  $('.tabset-dropdown > .nav-tabs > li').click(function () {
-    $(this).parent().toggleClass('nav-tabs-open')
-  });
-});
-</script>
 
 <!-- code folding -->
 
@@ -589,6 +578,7 @@ There is no missing week.</code></pre>
 +                 leg_lesions  = LEGLESIONS,
 +                 sudden_death = SUDDENDEATH,
 +                 nb_chicken   = CHICKENTOTAL) %&gt;% 
++   unique() %&gt;% # week 10 of flock 6 of farm 75-021 is duplicated
 +   write.csv(&quot;data/viparc.csv&quot;, FALSE, row.names = FALSE)</code></pre>
 <p>Note that, among the <code>clinical_signs</code>, <code>amu</code>, <code>chicken</code> and <code>samples</code> data frames, <code>samples</code> is the only one that contains rows only for the weeks where samples are taken. The three other data frames contain rows for all the weeks of all the flocks of all the farms. For this reason, after the merging, we have to replace the missing values in the <code>sampling</code> variable by <code>FALSE</code>.</p>
 </div>
@@ -610,6 +600,23 @@ $(document).ready(function () {
 
 
 </script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
+});
+</script>
+
+<!-- code folding -->
+
 
 <!-- dynamically load mathjax for compatibility with self-contained -->
 <script>
