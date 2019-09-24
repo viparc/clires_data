@@ -7,6 +7,7 @@
 <meta charset="utf-8" />
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
 
@@ -70,9 +71,7 @@ h6 {
 
 <link rel="stylesheet" href="style.css" type="text/css" />
 
-</head>
 
-<body>
 
 <style type = "text/css">
 .main-container {
@@ -191,8 +190,6 @@ $(document).ready(function () {
 });
 </script>
 
-<div class="container-fluid main-container">
-
 <!-- tabsets -->
 
 <style type="text/css">
@@ -249,20 +246,17 @@ $(document).ready(function () {
 }
 </style>
 
-<script>
-$(document).ready(function () {
-  window.buildTabsets("TOC");
-});
-
-$(document).ready(function () {
-  $('.tabset-dropdown > .nav-tabs > li').click(function () {
-    $(this).parent().toggleClass('nav-tabs-open')
-  });
-});
-</script>
-
 <!-- code folding -->
 
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
 
 
 
@@ -311,17 +305,17 @@ $(document).ready(function () {
 <p>The data set, as a flat rectangular CSV file, can be downloaded from <a href="https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv">here</a>:</p>
 <pre class="r"><code>&gt; # install.packages(&quot;readr&quot;)
 &gt; viparc &lt;- readr::read_csv(&quot;https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv&quot;,
-+                           col_types = paste(c(&quot;cii&quot;, rep(&quot;l&quot;, 6), rep(&quot;d&quot;, 45), &quot;lil&quot;), collapse = &quot;&quot;))</code></pre>
-<p>The data frame contains 5391 weeks of observation (rows) and 57 variables (columns). The variables are</p>
++                           col_types = paste(c(&quot;ciilli&quot;, rep(&quot;l&quot;, 6), rep(&quot;d&quot;, 45)), collapse = &quot;&quot;))</code></pre>
+<p>The data frame contains 5566 weeks of observation (rows) and 57 variables (columns). The variables are</p>
 <ul>
 <li><strong>farm:</strong> farm ID;</li>
 <li><strong>flock:</strong> flock ID (in a given farm);</li>
 <li><strong>week:</strong> week number (in a given flock of a given farm);</li>
-<li><strong>respiratory, …, sudden_death:</strong> presence (<code>TRUE</code>) / absence (<code>FALSE</code>) of 6 clinical signs in the flock;</li>
-<li><strong>amoxicillin_g, …, unknown_g:</strong> mass, in g, of the 44 antimicriobial used in the flock;</li>
+<li><strong>sampling:</strong> boolean informing whether there is feces sampling during the week (<code>TRUE</code>) or not (<code>FALSE</code>);</li>
 <li><strong>completed:</strong> boolean informing whether the flock is done (<code>TRUE</code>) or still ongoing (<code>FALSE</code>);</li>
 <li><strong>nb_chicken:</strong> total number of chicken in the farm;</li>
-<li><strong>sampling:</strong> boolean informing whether there is feces sampling during the week (<code>TRUE</code>) or not (<code>FALSE</code>).</li>
+<li><strong>respiratory, …, sudden_death:</strong> presence (<code>TRUE</code>) / absence (<code>FALSE</code>) of 6 clinical signs in the flock;</li>
+<li><strong>amoxicillin_g, …, unknown_g:</strong> mass, in g, of the 44 antimicriobial used in the flock.</li>
 </ul>
 
 
@@ -341,6 +335,23 @@ $(document).ready(function () {
 
 
 </script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
+});
+</script>
+
+<!-- code folding -->
+
 
 <!-- dynamically load mathjax for compatibility with self-contained -->
 <script>

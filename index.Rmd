@@ -33,7 +33,7 @@ The data set, as a flat rectangular CSV file, can be downloaded from
 ```{r}
 # install.packages("readr")
 viparc <- readr::read_csv("https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv",
-                          col_types = paste(c("cii", rep("l", 6), rep("d", 45), "lil"), collapse = ""))
+                          col_types = paste(c("ciilli", rep("l", 6), rep("d", 45)), collapse = ""))
 ```
 
 ```{r include = FALSE}
@@ -46,8 +46,8 @@ The data frame contains `r nrow(viparc)` weeks of observation (rows) and
 * **farm:** farm ID;
 * **flock:** flock ID (in a given farm);
 * **week:** week number (in a given flock of a given farm);
-* **respiratory, ..., sudden_death:** presence (`TRUE`) / absence (`FALSE`) of 6 clinical signs in the flock;
-* **amoxicillin_g, ..., unknown_g:** mass, in g, of the `r nb_ab` antimicriobial used in the flock;
+* **sampling:** boolean informing whether there is feces sampling during the week (`TRUE`) or not (`FALSE`);
 * **completed:** boolean informing whether the flock is done (`TRUE`) or still ongoing (`FALSE`);
 * **nb_chicken:** total number of chicken in the farm;
-* **sampling:** boolean informing whether there is feces sampling during the week (`TRUE`) or not (`FALSE`).
+* **respiratory, ..., sudden_death:** presence (`TRUE`) / absence (`FALSE`) of 6 clinical signs in the flock;
+* **amoxicillin_g, ..., unknown_g:** mass, in g, of the `r nb_ab` antimicriobial used in the flock.
