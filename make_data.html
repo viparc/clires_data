@@ -341,19 +341,18 @@ $(document).ready(function () {
 <pre class="r"><code>&gt; download_dropbox &lt;- function(url, ...) download.file(sub(&quot;dl=0&quot;, &quot;raw=1&quot;, url), ...)</code></pre>
 <p>The following function returns the flocks with missing weeks:</p>
 <pre class="r"><code>&gt; missing_weeks &lt;- function(x) {
-+   a &lt;- x %&gt;%
++   tmp &lt;- x %&gt;%
 +     dplyr::group_by(USUBJID, FLOCKSEQUENCE) %&gt;%
 +     dplyr::arrange(WEEK) %&gt;%
 +     dplyr::summarise(a = length(unique(diff(WEEK)))) %&gt;%
 +     dplyr::ungroup() %&gt;%
 +     dplyr::filter(a &gt; 1)
-+   if (nrow(a)) return(purrr::map2(a$USUBJID,
-+                                   a$FLOCKSEQUENCE,
-+                                   function(farm, flock)
-+                                     x %&gt;%
-+                                       dplyr::filter(USUBJID == farm, FLOCKSEQUENCE == flock) %&gt;% 
-+                                       dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK)
-+                                     ))
++   if (nrow(tmp)) return(purrr::map2(tmp$USUBJID,
++                                     tmp$FLOCKSEQUENCE,
++                                     function(farm, flock)
++                                       x %&gt;%
++                                         dplyr::filter(USUBJID == farm, FLOCKSEQUENCE == flock) %&gt;% 
++                                         dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK)))
 +   message(&quot;There is no missing week.&quot;)
 +   invisible(0)
 + }</code></pre>
@@ -363,8 +362,8 @@ $(document).ready(function () {
 <p>The <a href="https://www.ema.europa.eu/en/veterinary-regulatory/overview/antimicrobial-resistance/european-surveillance-veterinary-antimicrobial-consumption-esvac">ESVAC</a> conversion factors are available from the table 2 of page 62 of this <a href="http://www.oie.int">OIE</a> <a href="http://www.oie.int/fileadmin/Home/fr/Our_scientific_expertise/docs/pdf/AMR/Survey_on_monitoring_antimicrobial_agents_Dec2016.pdf">report</a>. A copy-paste of this table without headers is available <a href="https://raw.githubusercontent.com/viparc/clires_data/master/raw_data/esvac.txt">here</a>. Let’s download this file:</p>
 <pre class="r"><code>&gt; tmp &lt;- tempfile()
 &gt; download.file(&quot;https://raw.githubusercontent.com/viparc/clires_data/master/raw_data/esvac.txt&quot;, tmp)</code></pre>
-<p>And read and reformat the data into a named list:</p>
-<pre class="r"><code>&gt; esvac &lt;- tmp %&gt;% 
+<p>And read and reformat the data into a named numeric vector:</p>
+<pre class="r"><code>&gt; (esvac &lt;- tmp %&gt;% 
 +   readLines() %&gt;% 
 +   sub(&quot;^#.*&quot;, &quot;&quot;, .) %&gt;% 
 +   sub(&quot; *&quot;, &quot;&quot;, .) %&gt;% 
@@ -377,7 +376,11 @@ $(document).ready(function () {
 +                    mg.IU  = as.numeric(mg.IU)) %&gt;% 
 +   dplyr::bind_rows(data.frame(ab_oie = &quot;josamycin&quot;,
 +                               mg.IU  = 0.001, stringsAsFactors = FALSE)) %$%
-+   setNames(mg.IU, ab_oie)</code></pre>
++   setNames(mg.IU, ab_oie))
+         bacitracin    benzylpenicillin   chlortetracycline            colistin dihydrostreptomycin        erythromycin          gentamicin           kanamycin            neomycin            neomycin     oxytetracycline         paromomycin 
+           0.013514            0.000600            0.001111            0.000049            0.001220            0.001087            0.001613            0.001256            0.001325            0.001492            0.001149            0.001481 
+          polymyxin           rifamycin          spiramycin        streptomycin          tobramycin             tylosin        tetracycline           josamycin 
+           0.000119            0.001127            0.000313            0.001274            0.001143            0.001000            0.001000            0.001000 </code></pre>
 <p>Note that we got rid off one of the colistin data and that we manually added the data for josamycin that was absent from the table.</p>
 </div>
 <div id="drug-codes-from-general-information-data" class="section level2">
@@ -386,9 +389,10 @@ $(document).ready(function () {
 <pre class="r"><code>&gt; tmp &lt;- tempfile()
 &gt; download_dropbox(general_data, tmp)</code></pre>
 <p>Reformating and merging with the <code>esvac</code> dataframe that we generated above:</p>
-<pre class="r"><code>&gt; drug_codes &lt;- c(&quot;ANTIMICROBIAL&quot;, &quot;ANTIMICROBIAL_GridAnti&quot;) %&gt;% 
+<pre class="r"><code>&gt; (drug_codes &lt;- c(&quot;ANTIMICROBIAL&quot;, &quot;ANTIMICROBIAL_GridAnti&quot;) %&gt;% 
 +   lapply(readxl::read_excel, path = tmp) %&gt;% 
-+   purrr::invoke(dplyr::right_join, ., &quot;ANTIMICROBIAL_SEQ&quot;) %&gt;% 
++   c(list(c(&quot;ANTIMICROBIAL_SEQ&quot;))) %&gt;% 
++   do.call(dplyr::right_join, .) %&gt;%
 +   dplyr::select(CODE, ANTINAME1, CONCENTRATION, GRIDUNIT, GRIDPACK, GRIDPACKUNIT) %&gt;%
 +   dplyr::filter(! ANTINAME1 %in% c(&quot;alicin&quot;, &quot;axit oxolinic&quot;, &quot;iodo-hydroxyquinoline&quot;, &quot;metronidazol&quot;, &quot;nystatin&quot;)) %&gt;% 
 +   dplyr::mutate(ANTINAME1     = dplyr::recode(ANTINAME1, sunfadimethoxine  = &quot;sulfadimethoxine&quot;,
@@ -403,7 +407,7 @@ $(document).ready(function () {
 +                 GRIDPACK      = as.numeric(GRIDPACK),
 +                 CONCENTRATION = dplyr::na_if(CONCENTRATION, &quot;NA&quot;),
 +                 CONCENTRATION = dplyr::na_if(CONCENTRATION, &quot;na&quot;),
-+                 CONCENTRATION = dplyr::recode(CONCENTRATION, S = &quot;500&quot;), # this will ultimately be corrected in CliRes
++                 CONCENTRATION = dplyr::recode(CONCENTRATION, S = &quot;500&quot;), # this will ultimately be corrected in CliRes CORRECTION
 +                 CONCENTRATION = as.numeric(CONCENTRATION),
 +                 CONCENTRATION = ifelse(GRIDUNIT == &quot;IU&quot;, CONCENTRATION * esvac[ANTINAME1], CONCENTRATION),
 +                 GRIDUNIT      = ifelse(GRIDUNIT == &quot;IU&quot;, &quot;MG&quot;, GRIDUNIT), # linked to the above line
@@ -411,7 +415,22 @@ $(document).ready(function () {
 +                 GRIDUNIT      = ifelse(GRIDUNIT == &quot;MG&quot;, &quot;G&quot;, GRIDUNIT), # linked to the above line
 +                 GRIDPACK      = ifelse(GRIDPACKUNIT == &quot;KG&quot;, 1000 * GRIDPACK, GRIDPACK),
 +                 GRIDPACKUNIT  = ifelse(GRIDPACKUNIT == &quot;KG&quot;, &quot;G&quot;, GRIDPACKUNIT), # linked to the above line
-+                 proportion    = CONCENTRATION / GRIDPACK)</code></pre>
++                 proportion    = CONCENTRATION / GRIDPACK) %&gt;% 
++   dplyr::select(CODE, ANTINAME1, proportion))
+# A tibble: 461 x 3
+   CODE  ANTINAME1       proportion
+   &lt;chr&gt; &lt;chr&gt;                &lt;dbl&gt;
+ 1 AB001 colistin          0.000735
+ 2 AB001 oxytetracycline   0.015   
+ 3 AB002 oxytetracycline   0.07    
+ 4 AB002 colistin          0.0098  
+ 5 AB003 neomycin          0.0795  
+ 6 AB003 colistin          0.0147  
+ 7 AB004 oxytetracycline   0.01    
+ 8 AB005 gentamicin        0.06    
+ 9 AB005 colistin          0.0245  
+10 AB006 doxycycline       0.2     
+# … with 451 more rows</code></pre>
 </div>
 <div id="the-surveillance-data" class="section level2">
 <h2>The surveillance data</h2>
@@ -423,72 +442,196 @@ $(document).ready(function () {
 &gt; disease &lt;- c(&quot;DISEASE&quot;, &quot;DISEASE_GridEvent&quot;)
 &gt; chicks &lt;- c(&quot;MID_INOUT&quot;, &quot;MID_INOUT_GridEvent&quot;)</code></pre>
 <p>Reading the data from file:</p>
-<pre class="r"><code>&gt; surveillance &lt;- lapply2(c(antimicrobial, disease, chicks, &quot;SAMPLE&quot;),
-+                         readxl::read_excel, path = tmp)</code></pre>
+<pre class="r"><code>&gt; (surveillance &lt;- lapply2(c(antimicrobial, disease, chicks, &quot;SAMPLE&quot;),
++                          readxl::read_excel, path = tmp))
+$ANTIMICROBIAL
+# A tibble: 5,567 x 11
+   EVENT USUBJID ANTIMICROBIAL_SEQ STUDYID SITEID FARMCODE FLOCKSEQUENCE WEEKNO ANTIBIOTICNO entry enteredtime        
+   &lt;chr&gt; &lt;chr&gt;               &lt;dbl&gt; &lt;chr&gt;   &lt;chr&gt;  &lt;chr&gt;    &lt;chr&gt;          &lt;dbl&gt;        &lt;dbl&gt; &lt;dbl&gt; &lt;dttm&gt;             
+ 1 FLOCK 75-001                  1 18ZN    75     001      01                 1            1     2 2017-01-31 11:17:24
+ 2 FLOCK 75-002                  1 18ZN    75     002      01                 1            1     2 2017-02-24 15:46:27
+ 3 FLOCK 75-003                  1 18ZN    75     003      01                 1            0     2 2017-02-01 12:21:30
+ 4 FLOCK 75-004                  1 18ZN    75     004      01                 1            1     2 2017-01-31 15:53:38
+ 5 FLOCK 75-005                  1 18ZN    75     005      01                 1            2     2 2017-01-09 09:21:55
+ 6 FLOCK 75-006                  1 18ZN    75     006      01                 1            1     2 2017-02-01 14:04:31
+ 7 FLOCK 75-007                  1 18ZN    75     007      01                 1            1     2 2017-01-26 20:14:44
+ 8 FLOCK 75-008                  1 18ZN    75     008      01                 1            1     2 2017-01-31 16:56:22
+ 9 FLOCK 75-009                  1 18ZN    75     009      01                 1            1     2 2017-01-04 15:47:35
+10 FLOCK 75-010                  1 18ZN    75     010      01                 1            2     2 2017-01-09 10:56:58
+# … with 5,557 more rows
+
+$ANTIMICROBIAL_GridEvent
+# A tibble: 1,808 x 15
+   ANTIMICROBIAL_SEQ EVENT USUBJID ANTIMICROBIAL_GridEvent_SEQ CODE  INITIAL   AMOUTUSED PACKAGE PACKAGEUNIT  COST ALLFLOCK CHCKENUSEDNO PREVENTION entry enteredtime        
+               &lt;dbl&gt; &lt;chr&gt; &lt;chr&gt;                         &lt;dbl&gt; &lt;chr&gt; &lt;chr&gt;         &lt;dbl&gt; &lt;chr&gt;   &lt;chr&gt;       &lt;dbl&gt; &lt;lgl&gt;           &lt;dbl&gt; &lt;lgl&gt;      &lt;dbl&gt; &lt;dttm&gt;             
+ 1                 1 FLOCK 75-001                            1 AB001 COLITERRA       100 100     G           17000 TRUE               NA TRUE           2 2017-01-31 11:17:24
+ 2                 1 FLOCK 75-002                            1 AB001 COLITERRA        50 100     G           17000 TRUE               NA TRUE           2 2017-02-24 15:46:27
+ 3                 1 FLOCK 75-004                            1 AB001 COLITERRA       100 100     G           17000 TRUE               NA TRUE           2 2017-01-31 15:53:38
+ 4                 1 FLOCK 75-005                            1 AB001 Coliterra       100 100     G           25000 TRUE               NA TRUE           2 2017-01-09 09:21:55
+ 5                 1 FLOCK 75-006                            1 AB001 COLITERRA       100 100     G           25000 TRUE               NA TRUE           2 2017-02-01 14:04:31
+ 6                 1 FLOCK 75-007                            1 AB001 Coliterra       100 100     G           32000 TRUE               NA TRUE           2 2017-01-26 20:14:44
+ 7                 1 FLOCK 75-008                            1 AB001 COLITERRA       600 100     G           25000 TRUE               NA TRUE           2 2017-01-31 16:56:22
+ 8                 1 FLOCK 75-009                            1 AB001 Coliterra        50 100     G           35000 TRUE               NA TRUE           2 2017-01-04 15:47:35
+ 9                 1 FLOCK 75-010                            1 AB001 Coliterra       100 100     G           25000 TRUE               NA TRUE           2 2017-01-09 10:56:58
+10                 1 FLOCK 75-011                            1 AB001 Coliterra       100 100     G           15000 TRUE               NA TRUE           2 2017-01-09 09:59:28
+# … with 1,798 more rows
+
+$DISEASE
+# A tibble: 322 x 9
+   EVENT USUBJID DISEASE_SEQ STUDYID SITEID FARMCODE FLOCKSEQUENCE entry enteredtime        
+   &lt;chr&gt; &lt;chr&gt;         &lt;dbl&gt; &lt;chr&gt;   &lt;chr&gt;  &lt;chr&gt;    &lt;chr&gt;         &lt;dbl&gt; &lt;dttm&gt;             
+ 1 FLOCK 75-001            1 18ZN    75     001      01                2 2017-01-31 11:16:13
+ 2 FLOCK 75-002            1 18ZN    75     002      01                2 2017-02-24 15:45:23
+ 3 FLOCK 75-003            1 18ZN    75     003      01                2 2017-02-01 12:18:11
+ 4 FLOCK 75-004            1 18ZN    75     004      01                2 2017-01-31 15:52:40
+ 5 FLOCK 75-005            1 18ZN    75     005      01                2 2017-01-09 09:20:57
+ 6 FLOCK 75-006            1 18ZN    75     006      01                2 2017-02-01 14:03:44
+ 7 FLOCK 75-007            1 18ZN    75     007      01                2 2017-01-26 20:13:38
+ 8 FLOCK 75-008            1 18ZN    75     008      01                2 2017-01-31 16:55:40
+ 9 FLOCK 75-009            1 18ZN    75     009      01                2 2017-01-04 15:46:23
+10 FLOCK 75-010            1 18ZN    75     010      01                2 2017-01-09 10:54:05
+# … with 312 more rows
+
+$DISEASE_GridEvent
+# A tibble: 5,565 x 17
+   DISEASE_SEQ EVENT USUBJID DISEASE_GridEvent_SEQ  WEEK RESPIRATORY DIARRHOEA CNS   MALAISE LEGLESIONS SUDDENDEATH OTHDISEASE                       CHICKENSICKNO CHICKENDISEASEDEATH CHICKENSUDDENDEATH entry enteredtime        
+         &lt;dbl&gt; &lt;chr&gt; &lt;chr&gt;                   &lt;dbl&gt; &lt;dbl&gt; &lt;lgl&gt;       &lt;lgl&gt;     &lt;lgl&gt; &lt;lgl&gt;   &lt;lgl&gt;      &lt;lgl&gt;       &lt;chr&gt;                                    &lt;dbl&gt;               &lt;dbl&gt;              &lt;dbl&gt; &lt;dbl&gt; &lt;dttm&gt;             
+ 1           1 FLOCK 75-001                      1     1 FALSE       FALSE     FALSE FALSE   FALSE      TRUE        &lt;NA&gt;                                        NA                  NA                  3     2 2017-01-31 11:16:13
+ 2           1 FLOCK 75-002                      1     1 FALSE       FALSE     FALSE TRUE    FALSE      FALSE       &lt;NA&gt;                                         5                   5                 NA     2 2017-02-24 15:45:23
+ 3           1 FLOCK 75-003                      1     1 FALSE       FALSE     FALSE FALSE   FALSE      FALSE       CHUOT CAN                                   NA                  19                 NA     2 2017-02-01 12:18:12
+ 4           1 FLOCK 75-004                      1     1 FALSE       FALSE     FALSE FALSE   FALSE      FALSE       YEU CHET                                    NA                   2                 NA     2 2017-01-31 15:52:40
+ 5           1 FLOCK 75-005                      1     1 FALSE       TRUE      FALSE TRUE    FALSE      FALSE       &lt;NA&gt;                                        28                   8                 NA     2 2017-01-09 09:20:58
+ 6           1 FLOCK 75-006                      1     1 FALSE       FALSE     FALSE FALSE   FALSE      FALSE       1 CON BI DE CHET                             2                   3                 NA     2 2017-02-01 14:03:45
+ 7           1 FLOCK 75-007                      1     1 FALSE       FALSE     FALSE FALSE   FALSE      FALSE       Ga khuyet tat                               NA                   4                 NA     2 2017-01-26 20:13:38
+ 8           1 FLOCK 75-008                      1     1 FALSE       FALSE     FALSE TRUE    FALSE      FALSE       06 CON CHET KHONG RO NGUYEN NHAN             4                   4                  6     2 2017-01-31 16:55:40
+ 9           1 FLOCK 75-009                      1     1 FALSE       FALSE     FALSE FALSE   FALSE      FALSE       &lt;NA&gt;                                        NA                  NA                 NA     2 2017-01-04 15:46:23
+10           1 FLOCK 75-010                      1     1 FALSE       FALSE     FALSE FALSE   FALSE      FALSE       &lt;NA&gt;                                        NA                  NA                 NA     2 2017-01-09 10:54:05
+# … with 5,555 more rows
+
+$MID_INOUT
+# A tibble: 322 x 9
+   EVENT USUBJID MID_INOUT_SEQ STUDYID SITEID FARMCODE FLOCKSEQUENCE entry enteredtime        
+   &lt;chr&gt; &lt;chr&gt;           &lt;dbl&gt; &lt;chr&gt;   &lt;chr&gt;  &lt;chr&gt;    &lt;chr&gt;         &lt;dbl&gt; &lt;dttm&gt;             
+ 1 FLOCK 75-001              1 18ZN    75     001      01                2 2017-01-31 11:00:56
+ 2 FLOCK 75-002              1 18ZN    75     002      01                2 2017-02-01 14:25:02
+ 3 FLOCK 75-003              1 18ZN    75     003      01                2 2017-02-01 12:04:35
+ 4 FLOCK 75-004              1 18ZN    75     004      01                2 2017-01-31 15:36:13
+ 5 FLOCK 75-005              1 18ZN    75     005      01                2 2017-01-09 09:05:19
+ 6 FLOCK 75-006              1 18ZN    75     006      01                2 2017-02-01 13:52:37
+ 7 FLOCK 75-007              1 18ZN    75     007      01                2 2017-01-26 20:00:20
+ 8 FLOCK 75-008              1 18ZN    75     008      01                2 2017-01-31 16:41:08
+ 9 FLOCK 75-009              1 18ZN    75     009      01                2 2017-01-04 15:29:06
+10 FLOCK 75-010              1 18ZN    75     010      01                2 2017-01-09 10:36:04
+# … with 312 more rows
+
+$MID_INOUT_GridEvent
+# A tibble: 5,566 x 19
+   MID_INOUT_SEQ EVENT USUBJID MID_INOUT_GridEv…  WEEK CHICKENBOUGHT BUYINGCOST OTHCHICKEN OTHCHICKENSPEC ADDINGCHICKENTOT… CHICKENSELLINGT… SELLINGTOTALKGS CHICKENSELLINGV… OTHCHICKENEX EXREASON  CHICKENEXTOTAL CHICKENTOTAL entry enteredtime        
+           &lt;dbl&gt; &lt;chr&gt; &lt;chr&gt;               &lt;dbl&gt; &lt;dbl&gt;         &lt;dbl&gt;      &lt;dbl&gt;      &lt;dbl&gt; &lt;chr&gt;                      &lt;dbl&gt;            &lt;dbl&gt; &lt;lgl&gt;                      &lt;dbl&gt;        &lt;dbl&gt; &lt;chr&gt;              &lt;dbl&gt;        &lt;dbl&gt; &lt;dbl&gt; &lt;dttm&gt;             
+ 1             1 FLOCK 75-001                  1     1            NA         NA         NA &lt;NA&gt;                          NA               NA NA                            NA            3 CHET DOT…              3          207     2 2017-01-31 11:00:56
+ 2             1 FLOCK 75-002                  1     1            NA         NA         NA &lt;NA&gt;                          NA               NA NA                            NA            5 CHET BENH              5          500     2 2017-02-01 14:25:02
+ 3             1 FLOCK 75-003                  1     1            NA         NA         NA &lt;NA&gt;                           0               NA NA                            NA           25 CHUOT CAN             25          381     2 2018-10-29 09:49:51
+ 4             1 FLOCK 75-004                  1     1            NA         NA         NA &lt;NA&gt;                          NA               NA NA                            NA            2 YEU CHET               2          713     2 2017-01-31 15:36:13
+ 5             1 FLOCK 75-005                  1     1             8      96000         NA &lt;NA&gt;                           8               NA NA                            NA            8 chết bệnh              8          102     2 2018-10-25 09:33:31
+ 6             1 FLOCK 75-006                  1     1            NA         NA         NA &lt;NA&gt;                          NA               NA NA                            NA            5 3 CO CHE…              5           97     2 2018-10-25 09:41:55
+ 7             1 FLOCK 75-007                  1     1            NA         NA         NA &lt;NA&gt;                           0               NA NA                            NA            4 yeu, khu…              4           98     2 2017-01-26 20:00:20
+ 8             1 FLOCK 75-008                  1     1            NA         NA         NA &lt;NA&gt;                          NA               NA NA                            NA           10 06 CON C…             10          590     2 2017-01-31 16:41:08
+ 9             1 FLOCK 75-009                  1     1            NA         NA         NA &lt;NA&gt;                          NA               NA NA                            NA           NA &lt;NA&gt;                  NA          153     2 2018-08-26 09:54:30
+10             1 FLOCK 75-010                  1     1            NA         NA         NA &lt;NA&gt;                          NA               NA NA                            NA           NA 0                     NA          410     2 2018-08-26 09:55:01
+# … with 5,556 more rows
+
+$SAMPLE
+# A tibble: 961 x 19
+   EVENT  USUBJID SAMPLE_SEQ STUDYID SITEID FARMCODE FLOCKSEQUENCE SAMPLINGDATE        SAMPLINGVISIT BOOTSWAB CLOACALSWAB LIVECHICKEN ESAMPLE ESAMPLESPEC FLOCKPIC FLOCKPIC1 DEVICEINDEX1 entry enteredtime        
+   &lt;chr&gt;  &lt;chr&gt;        &lt;dbl&gt; &lt;chr&gt;   &lt;chr&gt;  &lt;chr&gt;    &lt;chr&gt;         &lt;dttm&gt;              &lt;chr&gt;         &lt;lgl&gt;    &lt;lgl&gt;       &lt;lgl&gt;       &lt;lgl&gt;   &lt;lgl&gt;       &lt;lgl&gt;    &lt;chr&gt;     &lt;chr&gt;        &lt;dbl&gt; &lt;dttm&gt;             
+ 1 Sample 75-001           1 18ZN    75     001      01            2016-10-24 00:00:00 S             TRUE     FALSE       FALSE       FALSE   NA          TRUE     001-S-01  101-0013         2 2016-10-27 15:38:03
+ 2 Sample 75-002           1 18ZN    75     002      01            2016-10-24 00:00:00 S             TRUE     FALSE       FALSE       FALSE   NA          TRUE     002-S-01  101-0018         2 2016-12-02 08:22:22
+ 3 Sample 75-003           1 18ZN    75     003      01            2016-10-28 00:00:00 S             TRUE     FALSE       FALSE       FALSE   NA          TRUE     003-S-01  101-0024         2 2016-11-07 16:18:17
+ 4 Sample 75-004           1 18ZN    75     004      01            2016-10-28 00:00:00 S             TRUE     FALSE       FALSE       FALSE   NA          TRUE     004-S-01  101-0029         2 2016-11-07 16:19:04
+ 5 Sample 75-005           1 18ZN    75     005      01            2016-11-09 00:00:00 S             TRUE     FALSE       FALSE       FALSE   NA          TRUE     005-S-01  103-0267         2 2016-12-02 08:39:51
+ 6 Sample 75-006           1 18ZN    75     006      01            2016-11-09 00:00:00 S             TRUE     FALSE       FALSE       FALSE   NA          TRUE     006-S-01  103-0289         2 2016-12-02 08:47:52
+ 7 Sample 75-007           1 18ZN    75     007      01            2016-11-09 00:00:00 S             TRUE     FALSE       FALSE       FALSE   NA          TRUE     007-S-01  103-0302         2 2016-12-02 08:59:47
+ 8 Sample 75-008           1 18ZN    75     008      01            2016-11-09 00:00:00 S             TRUE     FALSE       FALSE       FALSE   NA          TRUE     008-S-01  103-0326         2 2016-12-02 09:15:08
+ 9 Sample 75-009           1 18ZN    75     009      01            2016-11-09 00:00:00 S             TRUE     FALSE       FALSE       FALSE   NA          TRUE     009-S-01  102-0037         2 2016-12-02 09:21:22
+10 Sample 75-010           1 18ZN    75     010      01            2016-11-16 00:00:00 S             TRUE     FALSE       FALSE       FALSE   NA          TRUE     010-S-01  102-0042         2 2016-12-02 09:27:39
+# … with 951 more rows</code></pre>
 <div id="sampling-dates" class="section level3">
 <h3>Sampling dates</h3>
-<p>Retrieving the sampling dates:</p>
-<pre class="r"><code>&gt; samplesdata &lt;- surveillance$SAMPLE %&gt;% 
-+   dplyr::select(USUBJID, FLOCKSEQUENCE, SAMPLINGDATE, SAMPLINGVISIT) %&gt;% 
-+   unique()</code></pre>
-<p>Here we have to break the pipeline because we need to use the <code>samplesdata</code> at two distincts points in the section that follows:</p>
-<pre class="r"><code>&gt; samples &lt;- samplesdata %&gt;%
-+   dplyr::filter(SAMPLINGVISIT == &quot;S&quot;) %&gt;%
-+   dplyr::select(-SAMPLINGVISIT) %&gt;%
-+   dplyr::rename(start = SAMPLINGDATE) %&gt;%
-+   dplyr::right_join(samplesdata, c(&quot;USUBJID&quot;, &quot;FLOCKSEQUENCE&quot;)) %&gt;%
+<p>Retrieving the sampling dates. One key feature of the code below is to convert a sampling date into a week index. <code>SAMPLINGVISIT</code> tells whether the visit is at the start (<code>S</code>), the middle (<code>M</code>) or the end (<code>E</code>) of the flock.</p>
+<pre class="r"><code>&gt; (samples &lt;- surveillance$SAMPLE %&gt;%
++ # End sampling of flock 2 of farm 75-013 is duplicated, so we filter it out: CORRECTION
++   dplyr::filter(!(USUBJID == &quot;75-013&quot; &amp; FLOCKSEQUENCE == &quot;02&quot; &amp; SAMPLE_SEQ == 8)) %&gt;% 
++   dplyr::select(USUBJID, FLOCKSEQUENCE, SAMPLINGDATE, SAMPLINGVISIT) %&gt;%
++   assign(&quot;tmp&quot;, ., 1) %&gt;% # for reuse 4 lines later
++   dplyr::filter(SAMPLINGVISIT == &quot;S&quot;) %&gt;% # | gets the date...
++   dplyr::select(-SAMPLINGVISIT) %&gt;%       # | ... of the first week...
++   dplyr::rename(start = SAMPLINGDATE) %&gt;% # | ... of each flock.
++   dplyr::right_join(tmp, c(&quot;USUBJID&quot;, &quot;FLOCKSEQUENCE&quot;)) %&gt;%
 +   dplyr::mutate(WEEK     = as.numeric(floor((SAMPLINGDATE - start) / (60 * 60 * 24 * 7)) + 1),
 +                 sampling = TRUE) %&gt;% 
-+   dplyr::select(-start, -SAMPLINGDATE, -SAMPLINGVISIT)</code></pre>
++   dplyr::select(-start, -SAMPLINGDATE, -SAMPLINGVISIT) %&gt;% 
++   unique()) # dates of first visits are missing for flock 2 of farm 75-019, THIS NEED TO BE FIXED!!!!!
+# A tibble: 957 x 4
+   USUBJID FLOCKSEQUENCE  WEEK sampling
+   &lt;chr&gt;   &lt;chr&gt;         &lt;dbl&gt; &lt;lgl&gt;   
+ 1 75-001  01                1 TRUE    
+ 2 75-002  01                1 TRUE    
+ 3 75-003  01                1 TRUE    
+ 4 75-004  01                1 TRUE    
+ 5 75-005  01                1 TRUE    
+ 6 75-006  01                1 TRUE    
+ 7 75-007  01                1 TRUE    
+ 8 75-008  01                1 TRUE    
+ 9 75-009  01                1 TRUE    
+10 75-010  01                1 TRUE    
+# … with 947 more rows
+&gt;             # flock 3 of farm 75-029 and flock 2 of farm 75-058. CORRECTION</code></pre>
 <p>This data frame contains all the dates of sampling, one per row.</p>
 </div>
 <div id="clinical-signs" class="section level3">
 <h3>Clinical signs</h3>
-<p>Retrieving the clinical signs data:</p>
-<pre class="r"><code>&gt; clinical_signs0 &lt;- surveillance[disease] %&gt;% 
-+   unname() %&gt;% 
-+   purrr::invoke(dplyr::left_join, ., c(&quot;USUBJID&quot;, &quot;DISEASE_SEQ&quot;)) %&gt;%
-+   dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK, RESPIRATORY, DIARRHOEA, CNS, MALAISE, LEGLESIONS, SUDDENDEATH)</code></pre>
-<p>There are two corrections that cannot be done in CliRes and that we have to do here. We also have to break the pipeline because we uses the <code>clinical_signs0</code> dataframe that we just created at two distinct points in the section that follows:</p>
-<pre class="r"><code>&gt; clinical_signs &lt;- clinical_signs0 %&gt;% 
-+ # correction 1: 2 weeks 8 and no week 9 for cycle 2 of farm 8. These 2 weeks are identical
-+   dplyr::filter(USUBJID == &quot;75-008&quot;, FLOCKSEQUENCE == &quot;02&quot;, WEEK == 8) %&gt;% 
-+   dplyr::mutate(WEEK = 8:9) %&gt;%
-+   dplyr::bind_rows(dplyr::filter(clinical_signs0, !(USUBJID == &quot;75-008&quot; &amp; FLOCKSEQUENCE == &quot;02&quot; &amp; WEEK == 8))) %&gt;% 
-+ # correction 2: week 19 instead of 10 for cycle 6 of farm 21:
-+   dplyr::mutate(WEEK = ifelse(USUBJID == &quot;75-021&quot; &amp; FLOCKSEQUENCE == &quot;06&quot; &amp; WEEK == 19, 10, WEEK))</code></pre>
+<p>Retrieving the clinical signs data. Note that there are 2 corrections that we need to do here.</p>
+<pre class="r"><code>&gt; (clinical_signs &lt;- surveillance[disease] %&gt;% 
++   unname() %&gt;% # because of the do.call() call that follows
++   c(list(c(&quot;USUBJID&quot;, &quot;DISEASE_SEQ&quot;))) %&gt;% 
++   do.call(dplyr::left_join, .) %&gt;%
++   dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK, RESPIRATORY, DIARRHOEA, CNS, MALAISE, LEGLESIONS, SUDDENDEATH, DISEASE_GridEvent_SEQ) %&gt;% 
++   assign(&quot;tmp&quot;, ., 1) %&gt;% # for reuse 3 lines later
++ # CORRECTION 1: weeks 8 instead of 9 for one of the two records of cycle 2 of farm 8:
++   dplyr::filter(USUBJID == &quot;75-008&quot;, FLOCKSEQUENCE == &quot;02&quot;, DISEASE_GridEvent_SEQ == 9) %&gt;% 
++   dplyr::mutate(WEEK = 9) %&gt;%
++   dplyr::bind_rows(dplyr::filter(tmp, !(USUBJID == &quot;75-008&quot; &amp; FLOCKSEQUENCE == &quot;02&quot; &amp; DISEASE_GridEvent_SEQ == 9))) %&gt;% 
++   assign(&quot;tmp&quot;, ., 1) %&gt;% # for reuse 3 lines later
++ # CORRECTION 2: week 19 instead of 10 for cycle 6 of farm 21:
++   dplyr::filter(USUBJID == &quot;75-021&quot;, FLOCKSEQUENCE == &quot;06&quot;, DISEASE_GridEvent_SEQ == 10) %&gt;% 
++   dplyr::mutate(WEEK = 10) %&gt;%
++   dplyr::bind_rows(dplyr::filter(tmp, !(USUBJID == &quot;75-021&quot; &amp; FLOCKSEQUENCE == &quot;06&quot; &amp; DISEASE_GridEvent_SEQ == 10))) %&gt;% 
++   dplyr::select(-DISEASE_GridEvent_SEQ))
+# A tibble: 5,565 x 9
+   USUBJID FLOCKSEQUENCE  WEEK RESPIRATORY DIARRHOEA CNS   MALAISE LEGLESIONS SUDDENDEATH
+   &lt;chr&gt;   &lt;chr&gt;         &lt;dbl&gt; &lt;lgl&gt;       &lt;lgl&gt;     &lt;lgl&gt; &lt;lgl&gt;   &lt;lgl&gt;      &lt;lgl&gt;      
+ 1 75-021  06               10 FALSE       FALSE     FALSE FALSE   FALSE      FALSE      
+ 2 75-008  02                9 FALSE       FALSE     FALSE FALSE   FALSE      FALSE      
+ 3 75-001  01                1 FALSE       FALSE     FALSE FALSE   FALSE      TRUE       
+ 4 75-001  01                2 FALSE       FALSE     FALSE FALSE   FALSE      FALSE      
+ 5 75-001  01                3 FALSE       FALSE     FALSE FALSE   FALSE      TRUE       
+ 6 75-001  01                4 FALSE       FALSE     FALSE FALSE   FALSE      FALSE      
+ 7 75-001  01                5 FALSE       FALSE     FALSE FALSE   FALSE      FALSE      
+ 8 75-001  01                6 FALSE       FALSE     FALSE FALSE   FALSE      TRUE       
+ 9 75-001  01                7 FALSE       FALSE     FALSE FALSE   FALSE      FALSE      
+10 75-001  01                8 FALSE       FALSE     FALSE FALSE   FALSE      TRUE       
+# … with 5,555 more rows</code></pre>
 <p>This data frame contains all the weeks of all the flocks of all the farms. There is no missing weeks:</p>
 <pre class="r"><code>&gt; missing_weeks(clinical_signs)
-[[1]]
-# A tibble: 19 x 3
-   USUBJID FLOCKSEQUENCE  WEEK
-   &lt;chr&gt;   &lt;chr&gt;         &lt;dbl&gt;
- 1 75-021  06                1
- 2 75-021  06                2
- 3 75-021  06                3
- 4 75-021  06                4
- 5 75-021  06                5
- 6 75-021  06                6
- 7 75-021  06                7
- 8 75-021  06                8
- 9 75-021  06                9
-10 75-021  06               10
-11 75-021  06               11
-12 75-021  06               12
-13 75-021  06               13
-14 75-021  06               14
-15 75-021  06               15
-16 75-021  06               16
-17 75-021  06               17
-18 75-021  06               18
-19 75-021  06               10</code></pre>
+There is no missing week.</code></pre>
 </div>
 <div id="antimicrobial-usage" class="section level3">
 <h3>Antimicrobial usage</h3>
 <p>Here we’ll merge with the <code>drug_codes</code> dataframe that we generated above.</p>
-<pre class="r"><code>&gt; amu &lt;- surveillance[antimicrobial] %&gt;% 
-+   unname() %&gt;% 
-+   purrr::invoke(dplyr::left_join, ., c(&quot;USUBJID&quot;, &quot;ANTIMICROBIAL_SEQ&quot;)) %&gt;% 
+<pre class="r"><code>&gt; (amu &lt;- surveillance[antimicrobial] %&gt;% 
++   unname() %&gt;% # because of the do.call() call that follows
++   c(list(c(&quot;USUBJID&quot;, &quot;ANTIMICROBIAL_SEQ&quot;))) %&gt;% 
++   do.call(dplyr::left_join, .) %&gt;%
 +   dplyr::select(USUBJID, FLOCKSEQUENCE, WEEKNO, CODE, AMOUTUSED, PACKAGEUNIT) %&gt;%
 +   dplyr::rename(WEEK = WEEKNO) %&gt;% 
 +   dplyr::mutate(PACKAGEUNIT = dplyr::na_if(PACKAGEUNIT, &quot;TAB&quot;)) %&gt;% 
@@ -503,69 +646,118 @@ $(document).ready(function () {
 +   replace(is.na(.), 0) %&gt;%
 +   dplyr::group_by(USUBJID, FLOCKSEQUENCE, WEEK) %&gt;%
 +   dplyr::summarise_all(~sum(.)) %&gt;%
-+   dplyr::mutate_at(dplyr::vars(dplyr::ends_with(&quot;_g&quot;)), . %&gt;% ifelse(is.na(.), 0, .))</code></pre>
-<p>This data frame is supposed to contain one row per week per flock per farm. It happens that week 16 of flock 3 of farm 81 is missing:</p>
++   dplyr::ungroup() %&gt;% 
++   dplyr::mutate_at(dplyr::vars(dplyr::ends_with(&quot;_g&quot;)), . %&gt;% ifelse(is.na(.), 0, .)))
+# A tibble: 5,566 x 48
+   USUBJID FLOCKSEQUENCE  WEEK amoxicillin_g ampicillin_g apramycin_g cefadroxil_g cefotaxime_g ceftiofur_g cephalexin_g chloramphenicol… ciprofloxacin_g colistin_g doxycycline_g enramycin_g enrofloxacin_g erythromycin_g florfenicol_g flumequine_g
+   &lt;chr&gt;   &lt;chr&gt;         &lt;dbl&gt;         &lt;dbl&gt;        &lt;dbl&gt;       &lt;dbl&gt;        &lt;dbl&gt;        &lt;dbl&gt;       &lt;dbl&gt;        &lt;dbl&gt;            &lt;dbl&gt;           &lt;dbl&gt;      &lt;dbl&gt;         &lt;dbl&gt;       &lt;dbl&gt;          &lt;dbl&gt;          &lt;dbl&gt;         &lt;dbl&gt;        &lt;dbl&gt;
+ 1 75-001  01                1             0            0           0            0            0           0            0                0               0     0.0735             0           0              0              0             0            0
+ 2 75-001  01                2             0            0           0            0            0           0            0                0               0     0                  0           0              0              0             0            0
+ 3 75-001  01                3             0            0           0            0            0           0            0                0               0     0                  0           0              0              0             0            0
+ 4 75-001  01                4             0            0           0            0            0           0            0                0               0     0                  0           0              0              0             0            0
+ 5 75-001  01                5             0            0           0            0            0           0            0                0               0     0                  0           0              0              0             0            0
+ 6 75-001  01                6             0            0           0            0            0           0            0                0               0     0                  0           0              0              0             0            0
+ 7 75-001  01                7             0            0           0            0            0           0            0                0               0     0                  0           0              0              0             0            0
+ 8 75-001  01                8             0            0           0            0            0           0            0                0               0     0                  0           0              0              0             0            0
+ 9 75-001  01                9             0            0           0            0            0           0            0                0               0     0                  0           0              0              0             0            0
+10 75-001  01               10             0            0           0            0            0           0            0                0               0     0                  0           0              0              0             0            0
+# … with 5,556 more rows, and 29 more variables: gentamicin_g &lt;dbl&gt;, josamycin_g &lt;dbl&gt;, kitasamycin_g &lt;dbl&gt;, lincomycin_g &lt;dbl&gt;, marbofloxacin_g &lt;dbl&gt;, methenamine_g &lt;dbl&gt;, neomycin_g &lt;dbl&gt;, norfloxacin_g &lt;dbl&gt;, oxytetracycline_g &lt;dbl&gt;,
+#   spectinomycin_g &lt;dbl&gt;, spiramycin_g &lt;dbl&gt;, streptomycin_g &lt;dbl&gt;, sulfachloropyridazine_g &lt;dbl&gt;, sulfadiazine_g &lt;dbl&gt;, sulfadimethoxine_g &lt;dbl&gt;, sulfadimidine_g &lt;dbl&gt;, sulfaguanidin_g &lt;dbl&gt;, sulfamethazine_g &lt;dbl&gt;, sulfamethoxazole_g &lt;dbl&gt;,
+#   sulfamethoxypyridazine_g &lt;dbl&gt;, sulphamethoxazole_g &lt;dbl&gt;, sulphathiazole_g &lt;dbl&gt;, tetracycline_g &lt;dbl&gt;, thiamphenicol_g &lt;dbl&gt;, tiamulin_g &lt;dbl&gt;, tilmicosin_g &lt;dbl&gt;, trimethoprim_g &lt;dbl&gt;, tylosin_g &lt;dbl&gt;, unknown_g &lt;dbl&gt;</code></pre>
+<p>No missing weeks:</p>
 <pre class="r"><code>&gt; missing_weeks(amu)
 There is no missing week.</code></pre>
-<p>but that won’t be a problem when it’s merged with <code>clinical_signs</code> below.</p>
 </div>
 <div id="chicken-data" class="section level3">
 <h3>Chicken data</h3>
-<p>Retrieving data on chicken demographics:</p>
-<pre class="r"><code>&gt; chickendata &lt;- surveillance[chicks] %&gt;% 
-+   unname() %&gt;% 
-+   purrr::invoke(dplyr::left_join, ., c(&quot;USUBJID&quot;, &quot;MID_INOUT_SEQ&quot;)) %&gt;% 
-+   dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK, CHICKENTOTAL) %&gt;% 
-+   unique() %&gt;% 
-+   dplyr::mutate_at(&quot;CHICKENTOTAL&quot;, as.integer)</code></pre>
-<p>Here we have to break the pipeline because <code>chickendata</code> is used at two distinct points in the part below:</p>
-<pre class="r"><code>&gt; chicken &lt;- chickendata %&gt;%
-+   dplyr::group_by(USUBJID, FLOCKSEQUENCE) %&gt;%
-+   dplyr::summarize(completed = min(CHICKENTOTAL) &lt; 1) %&gt;%
-+   dplyr::ungroup() %&gt;% 
-+   dplyr::right_join(chickendata, c(&quot;USUBJID&quot;, &quot;FLOCKSEQUENCE&quot;))</code></pre>
-<p>This data frame is supposed to contain one row per week per flock per farm. It happens that week 6 of flock 8 of farm 70 is missing:</p>
+<p>Below is the code to retrieve data on chicken demographics. In there, we are computing a variable indicating whether the cycle is finisheed.</p>
+<pre class="r"><code>&gt; (chicken &lt;- surveillance[chicks] %&gt;% 
++   unname() %&gt;% # because of the do.call() call that follows
++   c(list(c(&quot;USUBJID&quot;, &quot;MID_INOUT_SEQ&quot;))) %&gt;% 
++   do.call(dplyr::left_join, .) %&gt;%
++   dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK, CHICKENTOTAL, MID_INOUT_GridEvent_SEQ) %&gt;% 
++ # CORRECTION:
++   assign(&quot;tmp&quot;, ., 1) %&gt;% # for reuse 3 lines below
++   dplyr::filter(USUBJID == &quot;75-070&quot;, FLOCKSEQUENCE == &quot;08&quot;, MID_INOUT_GridEvent_SEQ == 6) %&gt;% 
++   dplyr::mutate(WEEK = 6) %&gt;% 
++   dplyr::bind_rows(dplyr::filter(tmp, !(USUBJID == &quot;75-070&quot; &amp; FLOCKSEQUENCE == &quot;08&quot; &amp; MID_INOUT_GridEvent_SEQ == 6))) %&gt;% 
++   dplyr::select(-MID_INOUT_GridEvent_SEQ) %&gt;% 
++ # (end of correction)
++   dplyr::mutate_at(&quot;CHICKENTOTAL&quot;, as.integer) %&gt;% 
++   assign(&quot;tmp&quot;, ., 1) %&gt;% # for reuse on the final line
++   dplyr::group_by(USUBJID, FLOCKSEQUENCE) %&gt;%             # | computing whether...
++   dplyr::summarize(completed = min(CHICKENTOTAL) &lt; 1) %&gt;% # | ... the cycle is...
++   dplyr::ungroup() %&gt;%                                    # | ... finished.
++   dplyr::right_join(tmp, c(&quot;USUBJID&quot;, &quot;FLOCKSEQUENCE&quot;)))
+# A tibble: 5,566 x 5
+   USUBJID FLOCKSEQUENCE completed  WEEK CHICKENTOTAL
+   &lt;chr&gt;   &lt;chr&gt;         &lt;lgl&gt;     &lt;dbl&gt;        &lt;int&gt;
+ 1 75-070  08            TRUE          6          498
+ 2 75-001  01            TRUE          1          207
+ 3 75-001  01            TRUE          2          207
+ 4 75-001  01            TRUE          3          206
+ 5 75-001  01            TRUE          4          206
+ 6 75-001  01            TRUE          5          206
+ 7 75-001  01            TRUE          6          204
+ 8 75-001  01            TRUE          7          204
+ 9 75-001  01            TRUE          8          202
+10 75-001  01            TRUE          9          202
+# … with 5,556 more rows</code></pre>
+<p>No missing week:</p>
 <pre class="r"><code>&gt; missing_weeks(chicken)
-[[1]]
-# A tibble: 17 x 3
-   USUBJID FLOCKSEQUENCE  WEEK
-   &lt;chr&gt;   &lt;chr&gt;         &lt;dbl&gt;
- 1 75-070  08                1
- 2 75-070  08                2
- 3 75-070  08                3
- 4 75-070  08                4
- 5 75-070  08                5
- 6 75-070  08                7
- 7 75-070  08                8
- 8 75-070  08                9
- 9 75-070  08               10
-10 75-070  08               11
-11 75-070  08               12
-12 75-070  08               13
-13 75-070  08               14
-14 75-070  08               15
-15 75-070  08               16
-16 75-070  08               17
-17 75-070  08               18</code></pre>
+There is no missing week.</code></pre>
 </div>
 </div>
 <div id="merging-into-one-single-data-frame" class="section level2">
 <h2>Merging into one single data frame</h2>
-<p>Checking that there is no week defined in <code>amu</code> but not in <code>clinical_signs</code>:</p>
-<pre class="r"><code>&gt; dplyr::anti_join(amu, clinical_signs, c(&quot;USUBJID&quot;, &quot;FLOCKSEQUENCE&quot;, &quot;WEEK&quot;)) %&gt;% 
-+   nrow() %&gt;% 
-+   `&lt;`(1)
-[1] FALSE</code></pre>
-<p>Checking that there is no week defined in <code>chicken</code> but not in <code>clinical_signs</code>:</p>
-<pre class="r"><code>&gt; dplyr::anti_join(chicken, clinical_signs, c(&quot;USUBJID&quot;, &quot;FLOCKSEQUENCE&quot;, &quot;WEEK&quot;)) %&gt;% 
-+   nrow() %&gt;% 
-+   `&lt;`(1)
-[1] FALSE</code></pre>
+<p>Here, we merge the 4 data frames that were computed above: <code>samples</code>, <code>clinical_signs</code>, <code>amu</code> and <code>chicken</code>. First, we need to check that there is no incompatibility between the <code>amu</code>, <code>clinical_signs</code> and <code>chicken</code> data frames:</p>
+<pre class="r"><code>&gt; dplyr::anti_join(amu, clinical_signs, c(&quot;USUBJID&quot;, &quot;FLOCKSEQUENCE&quot;, &quot;WEEK&quot;)) %&gt;% dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK)
+# A tibble: 1 x 3
+  USUBJID FLOCKSEQUENCE  WEEK
+  &lt;chr&gt;   &lt;chr&gt;         &lt;dbl&gt;
+1 75-004  05               17
+&gt; dplyr::anti_join(clinical_signs, amu, c(&quot;USUBJID&quot;, &quot;FLOCKSEQUENCE&quot;, &quot;WEEK&quot;)) %&gt;% dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK)
+# A tibble: 0 x 3
+# … with 3 variables: USUBJID &lt;chr&gt;, FLOCKSEQUENCE &lt;chr&gt;, WEEK &lt;dbl&gt;
+&gt; dplyr::anti_join(chicken, clinical_signs, c(&quot;USUBJID&quot;, &quot;FLOCKSEQUENCE&quot;, &quot;WEEK&quot;)) %&gt;% dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK)
+# A tibble: 1 x 3
+  USUBJID FLOCKSEQUENCE  WEEK
+  &lt;chr&gt;   &lt;chr&gt;         &lt;dbl&gt;
+1 75-077  06               18
+&gt; dplyr::anti_join(clinical_signs, chicken, c(&quot;USUBJID&quot;, &quot;FLOCKSEQUENCE&quot;, &quot;WEEK&quot;)) %&gt;% dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK)
+# A tibble: 0 x 3
+# … with 3 variables: USUBJID &lt;chr&gt;, FLOCKSEQUENCE &lt;chr&gt;, WEEK &lt;dbl&gt;
+&gt; dplyr::anti_join(amu, chicken, c(&quot;USUBJID&quot;, &quot;FLOCKSEQUENCE&quot;, &quot;WEEK&quot;)) %&gt;% dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK)
+# A tibble: 1 x 3
+  USUBJID FLOCKSEQUENCE  WEEK
+  &lt;chr&gt;   &lt;chr&gt;         &lt;dbl&gt;
+1 75-004  05               17
+&gt; dplyr::anti_join(chicken, amu, c(&quot;USUBJID&quot;, &quot;FLOCKSEQUENCE&quot;, &quot;WEEK&quot;)) %&gt;% dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK)
+# A tibble: 1 x 3
+  USUBJID FLOCKSEQUENCE  WEEK
+  &lt;chr&gt;   &lt;chr&gt;         &lt;dbl&gt;
+1 75-077  06               18</code></pre>
+<p>The week <code>17</code> of flock <code>05</code> of the farm <code>75-004</code> should be removed from the <code>amu</code> data set:</p>
+<pre class="r"><code>&gt; amu %&gt;%
++   dplyr::filter(USUBJID == &quot;75-004&quot;, FLOCKSEQUENCE == &quot;05&quot;, WEEK == 17) %&gt;%
++   dplyr::select(-USUBJID, -FLOCKSEQUENCE, -WEEK) %&gt;%
++   unlist() %&gt;%
++   unique()
+[1] 0</code></pre>
+<p>Let’s remove it:</p>
+<pre class="r"><code>&gt; amu %&lt;&gt;% dplyr::filter(!(USUBJID == &quot;75-004&quot; &amp; FLOCKSEQUENCE == &quot;05&quot; &amp; WEEK == 17))</code></pre>
+<p>Furthermore, is seems that there is no data for the week <code>18</code> of the flock <code>06</code> of the farm <code>75-077</code> in the <code>amu</code> and <code>clinical_signs</code> data frame.</p>
+<pre class="r"><code>&gt; nrow(amu)
+[1] 5565
+&gt; nrow(chicken)
+[1] 5566
+&gt; nrow(clinical_signs)
+[1] 5565</code></pre>
 <p>We are ready for the merging and writing to disk:</p>
 <pre class="r"><code>&gt; if (!dir.exists(&quot;data&quot;)) dir.create(&quot;data&quot;)
-&gt; list(clinical_signs, amu, chicken, samples) %&gt;%
+&gt; list(chicken, clinical_signs, amu, samples) %&gt;% # chicken needs to be first because it&#39;s the only df with no NA
 +   purrr::reduce(dplyr::left_join, by = c(&quot;USUBJID&quot;, &quot;FLOCKSEQUENCE&quot;, &quot;WEEK&quot;)) %&gt;%
-+   dplyr::mutate(sampling = ! is.na(sampling)) %&gt;% 
++   dplyr::mutate(sampling = ! is.na(sampling)) %&gt;% # because in samples there are only sampled weeks
 +   dplyr::mutate_at(dplyr::vars(FLOCKSEQUENCE, WEEK), as.integer) %&gt;% 
 +   dplyr::arrange(USUBJID, FLOCKSEQUENCE, WEEK)  %&gt;%
 +   dplyr::rename(farm         = USUBJID,
@@ -578,7 +770,7 @@ There is no missing week.</code></pre>
 +                 leg_lesions  = LEGLESIONS,
 +                 sudden_death = SUDDENDEATH,
 +                 nb_chicken   = CHICKENTOTAL) %&gt;% 
-+   unique() %&gt;% # week 10 of flock 6 of farm 75-021 is duplicated
++   dplyr::select(farm, flock, week, sampling, dplyr::everything()) %&gt;% 
 +   write.csv(&quot;data/viparc.csv&quot;, FALSE, row.names = FALSE)</code></pre>
 <p>Note that, among the <code>clinical_signs</code>, <code>amu</code>, <code>chicken</code> and <code>samples</code> data frames, <code>samples</code> is the only one that contains rows only for the weeks where samples are taken. The three other data frames contain rows for all the weeks of all the flocks of all the farms. For this reason, after the merging, we have to replace the missing values in the <code>sampling</code> variable by <code>FALSE</code>.</p>
 </div>

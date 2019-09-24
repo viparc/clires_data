@@ -72,19 +72,18 @@ The following function returns the flocks with missing weeks:
 
 ```{r}
 missing_weeks <- function(x) {
-  a <- x %>%
+  tmp <- x %>%
     dplyr::group_by(USUBJID, FLOCKSEQUENCE) %>%
     dplyr::arrange(WEEK) %>%
     dplyr::summarise(a = length(unique(diff(WEEK)))) %>%
     dplyr::ungroup() %>%
     dplyr::filter(a > 1)
-  if (nrow(a)) return(purrr::map2(a$USUBJID,
-                                  a$FLOCKSEQUENCE,
-                                  function(farm, flock)
-                                    x %>%
-                                      dplyr::filter(USUBJID == farm, FLOCKSEQUENCE == flock) %>% 
-                                      dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK)
-                                    ))
+  if (nrow(tmp)) return(purrr::map2(tmp$USUBJID,
+                                    tmp$FLOCKSEQUENCE,
+                                    function(farm, flock)
+                                      x %>%
+                                        dplyr::filter(USUBJID == farm, FLOCKSEQUENCE == flock) %>% 
+                                        dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK)))
   message("There is no missing week.")
   invisible(0)
 }
@@ -106,10 +105,10 @@ tmp <- tempfile()
 download.file("https://raw.githubusercontent.com/viparc/clires_data/master/raw_data/esvac.txt", tmp)
 ```
 
-And read and reformat the data into a named list:
+And read and reformat the data into a named numeric vector:
 
 ```{r}
-esvac <- tmp %>% 
+(esvac <- tmp %>% 
   readLines() %>% 
   sub("^#.*", "", .) %>% 
   sub(" *", "", .) %>% 
@@ -122,7 +121,7 @@ esvac <- tmp %>%
                    mg.IU  = as.numeric(mg.IU)) %>% 
   dplyr::bind_rows(data.frame(ab_oie = "josamycin",
                               mg.IU  = 0.001, stringsAsFactors = FALSE)) %$%
-  setNames(mg.IU, ab_oie)
+  setNames(mg.IU, ab_oie))
 ```
 
 Note that we got rid off one of the colistin data and that we manually added the
@@ -140,9 +139,10 @@ download_dropbox(general_data, tmp)
 Reformating and merging with the `esvac` dataframe that we generated above:
 
 ```{r}
-drug_codes <- c("ANTIMICROBIAL", "ANTIMICROBIAL_GridAnti") %>% 
+(drug_codes <- c("ANTIMICROBIAL", "ANTIMICROBIAL_GridAnti") %>% 
   lapply(readxl::read_excel, path = tmp) %>% 
-  purrr::invoke(dplyr::right_join, ., "ANTIMICROBIAL_SEQ") %>% 
+  c(list(c("ANTIMICROBIAL_SEQ"))) %>% 
+  do.call(dplyr::right_join, .) %>%
   dplyr::select(CODE, ANTINAME1, CONCENTRATION, GRIDUNIT, GRIDPACK, GRIDPACKUNIT) %>%
   dplyr::filter(! ANTINAME1 %in% c("alicin", "axit oxolinic", "iodo-hydroxyquinoline", "metronidazol", "nystatin")) %>% 
   dplyr::mutate(ANTINAME1     = dplyr::recode(ANTINAME1, sunfadimethoxine  = "sulfadimethoxine",
@@ -157,7 +157,7 @@ drug_codes <- c("ANTIMICROBIAL", "ANTIMICROBIAL_GridAnti") %>%
                 GRIDPACK      = as.numeric(GRIDPACK),
                 CONCENTRATION = dplyr::na_if(CONCENTRATION, "NA"),
                 CONCENTRATION = dplyr::na_if(CONCENTRATION, "na"),
-                CONCENTRATION = dplyr::recode(CONCENTRATION, S = "500"), # this will ultimately be corrected in CliRes
+                CONCENTRATION = dplyr::recode(CONCENTRATION, S = "500"), # this will ultimately be corrected in CliRes CORRECTION
                 CONCENTRATION = as.numeric(CONCENTRATION),
                 CONCENTRATION = ifelse(GRIDUNIT == "IU", CONCENTRATION * esvac[ANTINAME1], CONCENTRATION),
                 GRIDUNIT      = ifelse(GRIDUNIT == "IU", "MG", GRIDUNIT), # linked to the above line
@@ -165,7 +165,8 @@ drug_codes <- c("ANTIMICROBIAL", "ANTIMICROBIAL_GridAnti") %>%
                 GRIDUNIT      = ifelse(GRIDUNIT == "MG", "G", GRIDUNIT), # linked to the above line
                 GRIDPACK      = ifelse(GRIDPACKUNIT == "KG", 1000 * GRIDPACK, GRIDPACK),
                 GRIDPACKUNIT  = ifelse(GRIDPACKUNIT == "KG", "G", GRIDPACKUNIT), # linked to the above line
-                proportion    = CONCENTRATION / GRIDPACK)
+                proportion    = CONCENTRATION / GRIDPACK) %>% 
+  dplyr::select(CODE, ANTINAME1, proportion))
 ```
 
 ## The surveillance data
@@ -189,60 +190,57 @@ chicks <- c("MID_INOUT", "MID_INOUT_GridEvent")
 Reading the data from file:
 
 ```{r}
-surveillance <- lapply2(c(antimicrobial, disease, chicks, "SAMPLE"),
-                        readxl::read_excel, path = tmp)
+(surveillance <- lapply2(c(antimicrobial, disease, chicks, "SAMPLE"),
+                         readxl::read_excel, path = tmp))
 ```
 
 ### Sampling dates
 
-Retrieving the sampling dates:
+Retrieving the sampling dates. One key feature of the code below is to convert
+a sampling date into a week index. `SAMPLINGVISIT` tells whether the visit is at
+the start (`S`), the middle (`M`) or the end (`E`) of the flock.
 
 ```{r}
-samplesdata <- surveillance$SAMPLE %>% 
-  dplyr::select(USUBJID, FLOCKSEQUENCE, SAMPLINGDATE, SAMPLINGVISIT) %>% 
-  unique()
-```
-
-Here we have to break the pipeline because we need to use the `samplesdata` at
-two distincts points in the section that follows:
-
-```{r}
-samples <- samplesdata %>%
-  dplyr::filter(SAMPLINGVISIT == "S") %>%
-  dplyr::select(-SAMPLINGVISIT) %>%
-  dplyr::rename(start = SAMPLINGDATE) %>%
-  dplyr::right_join(samplesdata, c("USUBJID", "FLOCKSEQUENCE")) %>%
+(samples <- surveillance$SAMPLE %>%
+# End sampling of flock 2 of farm 75-013 is duplicated, so we filter it out: CORRECTION
+  dplyr::filter(!(USUBJID == "75-013" & FLOCKSEQUENCE == "02" & SAMPLE_SEQ == 8)) %>% 
+  dplyr::select(USUBJID, FLOCKSEQUENCE, SAMPLINGDATE, SAMPLINGVISIT) %>%
+  assign("tmp", ., 1) %>% # for reuse 4 lines later
+  dplyr::filter(SAMPLINGVISIT == "S") %>% # | gets the date...
+  dplyr::select(-SAMPLINGVISIT) %>%       # | ... of the first week...
+  dplyr::rename(start = SAMPLINGDATE) %>% # | ... of each flock.
+  dplyr::right_join(tmp, c("USUBJID", "FLOCKSEQUENCE")) %>%
   dplyr::mutate(WEEK     = as.numeric(floor((SAMPLINGDATE - start) / (60 * 60 * 24 * 7)) + 1),
                 sampling = TRUE) %>% 
-  dplyr::select(-start, -SAMPLINGDATE, -SAMPLINGVISIT)
+  dplyr::select(-start, -SAMPLINGDATE, -SAMPLINGVISIT) %>% 
+  unique()) # dates of first visits are missing for flock 2 of farm 75-019, THIS NEED TO BE FIXED!!!!!
+            # flock 3 of farm 75-029 and flock 2 of farm 75-058. CORRECTION
 ```
 
 This data frame contains all the dates of sampling, one per row.
 
 ### Clinical signs
 
-Retrieving the clinical signs data:
+Retrieving the clinical signs data. Note that there are 2 corrections that we
+need to do here.
 
 ```{r}
-clinical_signs0 <- surveillance[disease] %>% 
-  unname() %>% 
-  purrr::invoke(dplyr::left_join, ., c("USUBJID", "DISEASE_SEQ")) %>%
-  dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK, RESPIRATORY, DIARRHOEA, CNS, MALAISE, LEGLESIONS, SUDDENDEATH)
-```
-
-There are two corrections that cannot be done in CliRes and that we have to do
-here. We also have to break the pipeline because we uses the `clinical_signs0`
-dataframe that we just created at two distinct points in the section that
-follows:
-
-```{r}
-clinical_signs <- clinical_signs0 %>% 
-# correction 1: 2 weeks 8 and no week 9 for cycle 2 of farm 8. These 2 weeks are identical
-  dplyr::filter(USUBJID == "75-008", FLOCKSEQUENCE == "02", WEEK == 8) %>% 
-  dplyr::mutate(WEEK = 8:9) %>%
-  dplyr::bind_rows(dplyr::filter(clinical_signs0, !(USUBJID == "75-008" & FLOCKSEQUENCE == "02" & WEEK == 8))) %>% 
-# correction 2: week 19 instead of 10 for cycle 6 of farm 21:
-  dplyr::mutate(WEEK = ifelse(USUBJID == "75-021" & FLOCKSEQUENCE == "06" & WEEK == 19, 10, WEEK))
+(clinical_signs <- surveillance[disease] %>% 
+  unname() %>% # because of the do.call() call that follows
+  c(list(c("USUBJID", "DISEASE_SEQ"))) %>% 
+  do.call(dplyr::left_join, .) %>%
+  dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK, RESPIRATORY, DIARRHOEA, CNS, MALAISE, LEGLESIONS, SUDDENDEATH, DISEASE_GridEvent_SEQ) %>% 
+  assign("tmp", ., 1) %>% # for reuse 3 lines later
+# CORRECTION 1: weeks 8 instead of 9 for one of the two records of cycle 2 of farm 8:
+  dplyr::filter(USUBJID == "75-008", FLOCKSEQUENCE == "02", DISEASE_GridEvent_SEQ == 9) %>% 
+  dplyr::mutate(WEEK = 9) %>%
+  dplyr::bind_rows(dplyr::filter(tmp, !(USUBJID == "75-008" & FLOCKSEQUENCE == "02" & DISEASE_GridEvent_SEQ == 9))) %>% 
+  assign("tmp", ., 1) %>% # for reuse 3 lines later
+# CORRECTION 2: week 19 instead of 10 for cycle 6 of farm 21:
+  dplyr::filter(USUBJID == "75-021", FLOCKSEQUENCE == "06", DISEASE_GridEvent_SEQ == 10) %>% 
+  dplyr::mutate(WEEK = 10) %>%
+  dplyr::bind_rows(dplyr::filter(tmp, !(USUBJID == "75-021" & FLOCKSEQUENCE == "06" & DISEASE_GridEvent_SEQ == 10))) %>% 
+  dplyr::select(-DISEASE_GridEvent_SEQ))
 ```
 
 This data frame contains all the weeks of all the flocks of all the farms. There
@@ -257,9 +255,10 @@ missing_weeks(clinical_signs)
 Here we'll merge with the `drug_codes` dataframe that we generated above.
 
 ```{r}
-amu <- surveillance[antimicrobial] %>% 
-  unname() %>% 
-  purrr::invoke(dplyr::left_join, ., c("USUBJID", "ANTIMICROBIAL_SEQ")) %>% 
+(amu <- surveillance[antimicrobial] %>% 
+  unname() %>% # because of the do.call() call that follows
+  c(list(c("USUBJID", "ANTIMICROBIAL_SEQ"))) %>% 
+  do.call(dplyr::left_join, .) %>%
   dplyr::select(USUBJID, FLOCKSEQUENCE, WEEKNO, CODE, AMOUTUSED, PACKAGEUNIT) %>%
   dplyr::rename(WEEK = WEEKNO) %>% 
   dplyr::mutate(PACKAGEUNIT = dplyr::na_if(PACKAGEUNIT, "TAB")) %>% 
@@ -274,44 +273,43 @@ amu <- surveillance[antimicrobial] %>%
   replace(is.na(.), 0) %>%
   dplyr::group_by(USUBJID, FLOCKSEQUENCE, WEEK) %>%
   dplyr::summarise_all(~sum(.)) %>%
-  dplyr::mutate_at(dplyr::vars(dplyr::ends_with("_g")), . %>% ifelse(is.na(.), 0, .))
+  dplyr::ungroup() %>% 
+  dplyr::mutate_at(dplyr::vars(dplyr::ends_with("_g")), . %>% ifelse(is.na(.), 0, .)))
 ```
 
-This data frame is supposed to contain one row per week per flock per farm. It
-happens that week 16 of flock 3 of farm 81 is missing:
+No missing weeks:
 
 ```{r}
 missing_weeks(amu)
 ```
 
-but that won't be a problem when it's merged with `clinical_signs` below.
-
 ### Chicken data
 
-Retrieving data on chicken demographics:
+Below is the code to retrieve data on chicken demographics. In there, we are
+computing a variable indicating whether the cycle is finisheed.
 
 ```{r}
-chickendata <- surveillance[chicks] %>% 
-  unname() %>% 
-  purrr::invoke(dplyr::left_join, ., c("USUBJID", "MID_INOUT_SEQ")) %>% 
-  dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK, CHICKENTOTAL) %>% 
-  unique() %>% 
-  dplyr::mutate_at("CHICKENTOTAL", as.integer)
+(chicken <- surveillance[chicks] %>% 
+  unname() %>% # because of the do.call() call that follows
+  c(list(c("USUBJID", "MID_INOUT_SEQ"))) %>% 
+  do.call(dplyr::left_join, .) %>%
+  dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK, CHICKENTOTAL, MID_INOUT_GridEvent_SEQ) %>% 
+# CORRECTION:
+  assign("tmp", ., 1) %>% # for reuse 3 lines below
+  dplyr::filter(USUBJID == "75-070", FLOCKSEQUENCE == "08", MID_INOUT_GridEvent_SEQ == 6) %>% 
+  dplyr::mutate(WEEK = 6) %>% 
+  dplyr::bind_rows(dplyr::filter(tmp, !(USUBJID == "75-070" & FLOCKSEQUENCE == "08" & MID_INOUT_GridEvent_SEQ == 6))) %>% 
+  dplyr::select(-MID_INOUT_GridEvent_SEQ) %>% 
+# (end of correction)
+  dplyr::mutate_at("CHICKENTOTAL", as.integer) %>% 
+  assign("tmp", ., 1) %>% # for reuse on the final line
+  dplyr::group_by(USUBJID, FLOCKSEQUENCE) %>%             # | computing whether...
+  dplyr::summarize(completed = min(CHICKENTOTAL) < 1) %>% # | ... the cycle is...
+  dplyr::ungroup() %>%                                    # | ... finished.
+  dplyr::right_join(tmp, c("USUBJID", "FLOCKSEQUENCE")))
 ```
 
-Here we have to break the pipeline because `chickendata` is used at two distinct
-points in the part below:
-
-```{r}
-chicken <- chickendata %>%
-  dplyr::group_by(USUBJID, FLOCKSEQUENCE) %>%
-  dplyr::summarize(completed = min(CHICKENTOTAL) < 1) %>%
-  dplyr::ungroup() %>% 
-  dplyr::right_join(chickendata, c("USUBJID", "FLOCKSEQUENCE"))
-```
-
-This data frame is supposed to contain one row per week per flock per farm. It
-happens that week 6 of flock 8 of farm 70 is missing:
+No missing week:
 
 ```{r}
 missing_weeks(chicken)
@@ -319,29 +317,52 @@ missing_weeks(chicken)
 
 ## Merging into one single data frame
 
-Checking that there is no week defined in `amu` but not in `clinical_signs`:
+Here, we merge the 4 data frames that were computed above: `samples`,
+`clinical_signs`, `amu` and `chicken`. First, we need to check that there is no
+incompatibility between the `amu`, `clinical_signs` and `chicken` data frames:
 
 ```{r}
-dplyr::anti_join(amu, clinical_signs, c("USUBJID", "FLOCKSEQUENCE", "WEEK")) %>% 
-  nrow() %>% 
-  `<`(1)
+dplyr::anti_join(amu, clinical_signs, c("USUBJID", "FLOCKSEQUENCE", "WEEK")) %>% dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK)
+dplyr::anti_join(clinical_signs, amu, c("USUBJID", "FLOCKSEQUENCE", "WEEK")) %>% dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK)
+dplyr::anti_join(chicken, clinical_signs, c("USUBJID", "FLOCKSEQUENCE", "WEEK")) %>% dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK)
+dplyr::anti_join(clinical_signs, chicken, c("USUBJID", "FLOCKSEQUENCE", "WEEK")) %>% dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK)
+dplyr::anti_join(amu, chicken, c("USUBJID", "FLOCKSEQUENCE", "WEEK")) %>% dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK)
+dplyr::anti_join(chicken, amu, c("USUBJID", "FLOCKSEQUENCE", "WEEK")) %>% dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK)
 ```
 
-Checking that there is no week defined in `chicken` but not in `clinical_signs`:
+The week `17` of flock `05` of the farm `75-004` should be removed from the `amu`
+data set:
 
 ```{r}
-dplyr::anti_join(chicken, clinical_signs, c("USUBJID", "FLOCKSEQUENCE", "WEEK")) %>% 
-  nrow() %>% 
-  `<`(1)
+amu %>%
+  dplyr::filter(USUBJID == "75-004", FLOCKSEQUENCE == "05", WEEK == 17) %>%
+  dplyr::select(-USUBJID, -FLOCKSEQUENCE, -WEEK) %>%
+  unlist() %>%
+  unique()
+```
+
+Let's remove it:
+
+```{r}
+amu %<>% dplyr::filter(!(USUBJID == "75-004" & FLOCKSEQUENCE == "05" & WEEK == 17))
+```
+
+Furthermore, is seems that there is no data for the week `18` of the flock `06`
+of the farm `75-077` in the `amu` and `clinical_signs` data frame.
+
+```{r}
+nrow(amu)
+nrow(chicken)
+nrow(clinical_signs)
 ```
 
 We are ready for the merging and writing to disk:
 
 ```{r}
 if (!dir.exists("data")) dir.create("data")
-list(clinical_signs, amu, chicken, samples) %>%
+list(chicken, clinical_signs, amu, samples) %>% # chicken needs to be first because it's the only df with no NA
   purrr::reduce(dplyr::left_join, by = c("USUBJID", "FLOCKSEQUENCE", "WEEK")) %>%
-  dplyr::mutate(sampling = ! is.na(sampling)) %>% 
+  dplyr::mutate(sampling = ! is.na(sampling)) %>% # because in samples there are only sampled weeks
   dplyr::mutate_at(dplyr::vars(FLOCKSEQUENCE, WEEK), as.integer) %>% 
   dplyr::arrange(USUBJID, FLOCKSEQUENCE, WEEK)  %>%
   dplyr::rename(farm         = USUBJID,
@@ -354,7 +375,7 @@ list(clinical_signs, amu, chicken, samples) %>%
                 leg_lesions  = LEGLESIONS,
                 sudden_death = SUDDENDEATH,
                 nb_chicken   = CHICKENTOTAL) %>% 
-  unique() %>% # week 10 of flock 6 of farm 75-021 is duplicated
+  dplyr::select(farm, flock, week, sampling, dplyr::everything()) %>% 
   write.csv("data/viparc.csv", FALSE, row.names = FALSE)
 ```
 
