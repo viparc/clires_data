@@ -775,7 +775,7 @@ There is no missing week.</code></pre>
 +                 nb_chicken            = CHICKENTOTAL,
 +                 chicken_disease_death = CHICKENDISEASEDEATH,
 +                 chicken_sudden_death  = CHICKENSUDDENDEATH) %&gt;% 
-+   dplyr::select(farm, flock, week, sampling, dplyr::everything()) %&gt;% 
++   dplyr::select(farm, flock, week, sampling, completed, nb_chicken, chicken_disease_death, chicken_sudden_death, dplyr::everything()) %&gt;% 
 +   write.csv(&quot;data/viparc.csv&quot;, FALSE, row.names = FALSE)</code></pre>
 <p>Note that, among the <code>clinical_signs</code>, <code>amu</code>, <code>chicken</code> and <code>samples</code> data frames, <code>samples</code> is the only one that contains rows only for the weeks where samples are taken. The three other data frames contain rows for all the weeks of all the flocks of all the farms. For this reason, after the merging, we have to replace the missing values in the <code>sampling</code> variable by <code>FALSE</code>.</p>
 </div>

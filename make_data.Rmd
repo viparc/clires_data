@@ -380,7 +380,7 @@ list(chicken, clinical_signs, amu, samples) %>% # chicken needs to be first beca
                 nb_chicken            = CHICKENTOTAL,
                 chicken_disease_death = CHICKENDISEASEDEATH,
                 chicken_sudden_death  = CHICKENSUDDENDEATH) %>% 
-  dplyr::select(farm, flock, week, sampling, dplyr::everything()) %>% 
+  dplyr::select(farm, flock, week, sampling, completed, nb_chicken, chicken_disease_death, chicken_sudden_death, dplyr::everything()) %>% 
   write.csv("data/viparc.csv", FALSE, row.names = FALSE)
 ```
 
