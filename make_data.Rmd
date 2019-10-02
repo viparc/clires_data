@@ -229,7 +229,10 @@ need to do here.
   unname() %>% # because of the do.call() call that follows
   c(list(c("USUBJID", "DISEASE_SEQ"))) %>% 
   do.call(dplyr::left_join, .) %>%
-  dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK, RESPIRATORY, DIARRHOEA, CNS, MALAISE, LEGLESIONS, SUDDENDEATH, DISEASE_GridEvent_SEQ) %>% 
+  dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK, RESPIRATORY, DIARRHOEA, CNS, MALAISE,
+                LEGLESIONS, SUDDENDEATH, DISEASE_GridEvent_SEQ, CHICKENDISEASEDEATH, CHICKENSUDDENDEATH) %>% 
+  dplyr::mutate(CHICKENDISEASEDEATH = tidyr::replace_na(CHICKENDISEASEDEATH, 0),
+                CHICKENSUDDENDEATH = tidyr::replace_na(CHICKENSUDDENDEATH, 0)) %>% 
   assign("tmp", ., 1) %>% # for reuse 3 lines later
 # CORRECTION 1: weeks 8 instead of 9 for one of the two records of cycle 2 of farm 8:
   dplyr::filter(USUBJID == "75-008", FLOCKSEQUENCE == "02", DISEASE_GridEvent_SEQ == 9) %>% 
@@ -365,16 +368,18 @@ list(chicken, clinical_signs, amu, samples) %>% # chicken needs to be first beca
   dplyr::mutate(sampling = ! is.na(sampling)) %>% # because in samples there are only sampled weeks
   dplyr::mutate_at(dplyr::vars(FLOCKSEQUENCE, WEEK), as.integer) %>% 
   dplyr::arrange(USUBJID, FLOCKSEQUENCE, WEEK)  %>%
-  dplyr::rename(farm         = USUBJID,
-                flock        = FLOCKSEQUENCE,
-                week         = WEEK,
-                respiratory  = RESPIRATORY,
-                diarrhoea    = DIARRHOEA,
-                cns          = CNS,
-                malaise      = MALAISE,
-                leg_lesions  = LEGLESIONS,
-                sudden_death = SUDDENDEATH,
-                nb_chicken   = CHICKENTOTAL) %>% 
+  dplyr::rename(farm                  = USUBJID,
+                flock                 = FLOCKSEQUENCE,
+                week                  = WEEK,
+                respiratory           = RESPIRATORY,
+                diarrhoea             = DIARRHOEA,
+                cns                   = CNS,
+                malaise               = MALAISE,
+                leg_lesions           = LEGLESIONS,
+                sudden_death          = SUDDENDEATH,
+                nb_chicken            = CHICKENTOTAL,
+                chicken_disease_death = CHICKENDISEASEDEATH,
+                chicken_sudden_death  = CHICKENSUDDENDEATH) %>% 
   dplyr::select(farm, flock, week, sampling, dplyr::everything()) %>% 
   write.csv("data/viparc.csv", FALSE, row.names = FALSE)
 ```

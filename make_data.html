@@ -595,7 +595,10 @@ $SAMPLE
 +   unname() %&gt;% # because of the do.call() call that follows
 +   c(list(c(&quot;USUBJID&quot;, &quot;DISEASE_SEQ&quot;))) %&gt;% 
 +   do.call(dplyr::left_join, .) %&gt;%
-+   dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK, RESPIRATORY, DIARRHOEA, CNS, MALAISE, LEGLESIONS, SUDDENDEATH, DISEASE_GridEvent_SEQ) %&gt;% 
++   dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK, RESPIRATORY, DIARRHOEA, CNS, MALAISE,
++                 LEGLESIONS, SUDDENDEATH, DISEASE_GridEvent_SEQ, CHICKENDISEASEDEATH, CHICKENSUDDENDEATH) %&gt;% 
++   dplyr::mutate(CHICKENDISEASEDEATH = tidyr::replace_na(CHICKENDISEASEDEATH, 0),
++                 CHICKENSUDDENDEATH = tidyr::replace_na(CHICKENSUDDENDEATH, 0)) %&gt;% 
 +   assign(&quot;tmp&quot;, ., 1) %&gt;% # for reuse 3 lines later
 + # CORRECTION 1: weeks 8 instead of 9 for one of the two records of cycle 2 of farm 8:
 +   dplyr::filter(USUBJID == &quot;75-008&quot;, FLOCKSEQUENCE == &quot;02&quot;, DISEASE_GridEvent_SEQ == 9) %&gt;% 
@@ -607,19 +610,19 @@ $SAMPLE
 +   dplyr::mutate(WEEK = 10) %&gt;%
 +   dplyr::bind_rows(dplyr::filter(tmp, !(USUBJID == &quot;75-021&quot; &amp; FLOCKSEQUENCE == &quot;06&quot; &amp; DISEASE_GridEvent_SEQ == 10))) %&gt;% 
 +   dplyr::select(-DISEASE_GridEvent_SEQ))
-# A tibble: 5,565 x 9
-   USUBJID FLOCKSEQUENCE  WEEK RESPIRATORY DIARRHOEA CNS   MALAISE LEGLESIONS SUDDENDEATH
-   &lt;chr&gt;   &lt;chr&gt;         &lt;dbl&gt; &lt;lgl&gt;       &lt;lgl&gt;     &lt;lgl&gt; &lt;lgl&gt;   &lt;lgl&gt;      &lt;lgl&gt;      
- 1 75-021  06               10 FALSE       FALSE     FALSE FALSE   FALSE      FALSE      
- 2 75-008  02                9 FALSE       FALSE     FALSE FALSE   FALSE      FALSE      
- 3 75-001  01                1 FALSE       FALSE     FALSE FALSE   FALSE      TRUE       
- 4 75-001  01                2 FALSE       FALSE     FALSE FALSE   FALSE      FALSE      
- 5 75-001  01                3 FALSE       FALSE     FALSE FALSE   FALSE      TRUE       
- 6 75-001  01                4 FALSE       FALSE     FALSE FALSE   FALSE      FALSE      
- 7 75-001  01                5 FALSE       FALSE     FALSE FALSE   FALSE      FALSE      
- 8 75-001  01                6 FALSE       FALSE     FALSE FALSE   FALSE      TRUE       
- 9 75-001  01                7 FALSE       FALSE     FALSE FALSE   FALSE      FALSE      
-10 75-001  01                8 FALSE       FALSE     FALSE FALSE   FALSE      TRUE       
+# A tibble: 5,565 x 11
+   USUBJID FLOCKSEQUENCE  WEEK RESPIRATORY DIARRHOEA CNS   MALAISE LEGLESIONS SUDDENDEATH CHICKENDISEASEDEATH CHICKENSUDDENDEATH
+   &lt;chr&gt;   &lt;chr&gt;         &lt;dbl&gt; &lt;lgl&gt;       &lt;lgl&gt;     &lt;lgl&gt; &lt;lgl&gt;   &lt;lgl&gt;      &lt;lgl&gt;                     &lt;dbl&gt;              &lt;dbl&gt;
+ 1 75-021  06               10 FALSE       FALSE     FALSE FALSE   FALSE      FALSE                         0                  0
+ 2 75-008  02                9 FALSE       FALSE     FALSE FALSE   FALSE      FALSE                         0                  0
+ 3 75-001  01                1 FALSE       FALSE     FALSE FALSE   FALSE      TRUE                          0                  3
+ 4 75-001  01                2 FALSE       FALSE     FALSE FALSE   FALSE      FALSE                         0                  0
+ 5 75-001  01                3 FALSE       FALSE     FALSE FALSE   FALSE      TRUE                          0                  1
+ 6 75-001  01                4 FALSE       FALSE     FALSE FALSE   FALSE      FALSE                         0                  0
+ 7 75-001  01                5 FALSE       FALSE     FALSE FALSE   FALSE      FALSE                         0                  0
+ 8 75-001  01                6 FALSE       FALSE     FALSE FALSE   FALSE      TRUE                          0                  2
+ 9 75-001  01                7 FALSE       FALSE     FALSE FALSE   FALSE      FALSE                         0                  0
+10 75-001  01                8 FALSE       FALSE     FALSE FALSE   FALSE      TRUE                          0                  2
 # … with 5,555 more rows</code></pre>
 <p>This data frame contains all the weeks of all the flocks of all the farms. There is no missing weeks:</p>
 <pre class="r"><code>&gt; missing_weeks(clinical_signs)
@@ -760,16 +763,18 @@ There is no missing week.</code></pre>
 +   dplyr::mutate(sampling = ! is.na(sampling)) %&gt;% # because in samples there are only sampled weeks
 +   dplyr::mutate_at(dplyr::vars(FLOCKSEQUENCE, WEEK), as.integer) %&gt;% 
 +   dplyr::arrange(USUBJID, FLOCKSEQUENCE, WEEK)  %&gt;%
-+   dplyr::rename(farm         = USUBJID,
-+                 flock        = FLOCKSEQUENCE,
-+                 week         = WEEK,
-+                 respiratory  = RESPIRATORY,
-+                 diarrhoea    = DIARRHOEA,
-+                 cns          = CNS,
-+                 malaise      = MALAISE,
-+                 leg_lesions  = LEGLESIONS,
-+                 sudden_death = SUDDENDEATH,
-+                 nb_chicken   = CHICKENTOTAL) %&gt;% 
++   dplyr::rename(farm                  = USUBJID,
++                 flock                 = FLOCKSEQUENCE,
++                 week                  = WEEK,
++                 respiratory           = RESPIRATORY,
++                 diarrhoea             = DIARRHOEA,
++                 cns                   = CNS,
++                 malaise               = MALAISE,
++                 leg_lesions           = LEGLESIONS,
++                 sudden_death          = SUDDENDEATH,
++                 nb_chicken            = CHICKENTOTAL,
++                 chicken_disease_death = CHICKENDISEASEDEATH,
++                 chicken_sudden_death  = CHICKENSUDDENDEATH) %&gt;% 
 +   dplyr::select(farm, flock, week, sampling, dplyr::everything()) %&gt;% 
 +   write.csv(&quot;data/viparc.csv&quot;, FALSE, row.names = FALSE)</code></pre>
 <p>Note that, among the <code>clinical_signs</code>, <code>amu</code>, <code>chicken</code> and <code>samples</code> data frames, <code>samples</code> is the only one that contains rows only for the weeks where samples are taken. The three other data frames contain rows for all the weeks of all the flocks of all the farms. For this reason, after the merging, we have to replace the missing values in the <code>sampling</code> variable by <code>FALSE</code>.</p>
