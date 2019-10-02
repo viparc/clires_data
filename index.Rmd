@@ -33,7 +33,7 @@ The data set, as a flat rectangular CSV file, can be downloaded from
 ```{r}
 # install.packages("readr")
 viparc <- readr::read_csv("https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv",
-                          col_types = paste(c("ciilli", rep("l", 6), "ii", rep("d", 45)), collapse = ""))
+                          col_types = paste(c("ciillidd", rep("l", 6), rep("d", 45)), collapse = ""))
 ```
 
 ```{r include = FALSE}
@@ -49,6 +49,8 @@ The data frame contains `r nrow(viparc)` weeks of observation (rows) and
 * **sampling:** boolean informing whether there is feces sampling during the week (`TRUE`) or not (`FALSE`);
 * **completed:** boolean informing whether the flock is done (`TRUE`) or still ongoing (`FALSE`);
 * **nb_chicken:** total number of chicken in the farm;
+* **chicken_disease_death** number of chicken in the farm that died from disease between the previous and the current weeks;
+* **chicken_sudden_death** number of chicken in the farm that suddenly died (from other causes than the disease) between the previous and the current weeks;
 * **respiratory, ..., sudden_death:** presence (`TRUE`) / absence (`FALSE`) of 6 clinical signs in the flock;
 * **chicken_disease_death**: number of chicken dying from disease between the previous and the current weeks;
 * **chicken_sudden_death**: number of chicken suddenly dying (from other cause than disease) between the previous and the current weeks;
