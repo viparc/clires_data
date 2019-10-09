@@ -14,7 +14,7 @@ ab <- list(
   Diaminopyrimidines = "trimethoprim_use"
 )
 
-antimicrobials_classes <- data.frame(antimicrobial = sub("_use$", "", unlist(ab)), class = rep(names(ab), sapply(ab, length)))
+antimicrobials_classes <- data.frame(antimicrobial = sub("_use$", "", unlist(ab)), class = rep(tolower(names(ab)), sapply(ab, length)))
 rownames(antimicrobials_classes) <- NULL
 write.csv(antimicrobials_classes, "data/antimicrobial_classes.csv", FALSE, row.names = FALSE)
 
