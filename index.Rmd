@@ -55,3 +55,11 @@ The data frame contains `r nrow(viparc)` weeks of observation (rows) and
 * **chicken_disease_death**: number of chicken dying from disease between the previous and the current weeks;
 * **chicken_sudden_death**: number of chicken suddenly dying (from other cause than disease) between the previous and the current weeks;
 * **amoxicillin_g, ..., unknown_g:** mass, in g, of the `r nb_ab` antimicriobial used in the flock.
+
+In addition, there is also information on the antimicrobial class of each 
+antimicrobial used in the data set. These data can be download from here:
+
+```{r}
+ab_classes <- readr::read_csv("https://raw.githubusercontent.com/viparc/clires_data/master/data/antimicrobial_classes.csv", col_types = "cc")
+```
+

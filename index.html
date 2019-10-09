@@ -321,6 +321,8 @@ $(document).ready(function () {
 <li><strong>chicken_sudden_death</strong>: number of chicken suddenly dying (from other cause than disease) between the previous and the current weeks;</li>
 <li><strong>amoxicillin_g, …, unknown_g:</strong> mass, in g, of the 44 antimicriobial used in the flock.</li>
 </ul>
+<p>In addition, there is also information on the antimicrobial class of each antimicrobial used in the data set. These data can be download from here:</p>
+<pre class="r"><code>&gt; ab_classes &lt;- readr::read_csv(&quot;https://raw.githubusercontent.com/viparc/clires_data/master/data/antimicrobial_classes.csv&quot;, col_types = &quot;cc&quot;)</code></pre>
 
 
 
