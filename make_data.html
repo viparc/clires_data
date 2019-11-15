@@ -678,7 +678,7 @@ There is no missing week.</code></pre>
 +   unname() %&gt;% # because of the do.call() call that follows
 +   c(list(c(&quot;USUBJID&quot;, &quot;MID_INOUT_SEQ&quot;))) %&gt;% 
 +   do.call(dplyr::left_join, .) %&gt;%
-+   dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK, CHICKENTOTAL, MID_INOUT_GridEvent_SEQ) %&gt;% 
++   dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK, CHICKENTOTAL, CHICKENEXTOTAL, MID_INOUT_GridEvent_SEQ) %&gt;% 
 + # CORRECTION:
 +   assign(&quot;tmp&quot;, ., 1) %&gt;% # for reuse 3 lines below
 +   dplyr::filter(USUBJID == &quot;75-070&quot;, FLOCKSEQUENCE == &quot;08&quot;, MID_INOUT_GridEvent_SEQ == 6) %&gt;% 
@@ -686,25 +686,26 @@ There is no missing week.</code></pre>
 +   dplyr::bind_rows(dplyr::filter(tmp, !(USUBJID == &quot;75-070&quot; &amp; FLOCKSEQUENCE == &quot;08&quot; &amp; MID_INOUT_GridEvent_SEQ == 6))) %&gt;% 
 +   dplyr::select(-MID_INOUT_GridEvent_SEQ) %&gt;% 
 + # (end of correction)
-+   dplyr::mutate_at(&quot;CHICKENTOTAL&quot;, as.integer) %&gt;% 
++   dplyr::mutate_at(c(&quot;CHICKENTOTAL&quot;, &quot;CHICKENEXTOTAL&quot;), as.integer) %&gt;% 
++   dplyr::mutate_at(&quot;CHICKENEXTOTAL&quot;, tidyr::replace_na, 0) %&gt;% 
 +   assign(&quot;tmp&quot;, ., 1) %&gt;% # for reuse on the final line
 +   dplyr::group_by(USUBJID, FLOCKSEQUENCE) %&gt;%             # | computing whether...
 +   dplyr::summarize(completed = min(CHICKENTOTAL) &lt; 1) %&gt;% # | ... the cycle is...
 +   dplyr::ungroup() %&gt;%                                    # | ... finished.
 +   dplyr::right_join(tmp, c(&quot;USUBJID&quot;, &quot;FLOCKSEQUENCE&quot;)))
-# A tibble: 5,566 x 5
-   USUBJID FLOCKSEQUENCE completed  WEEK CHICKENTOTAL
-   &lt;chr&gt;   &lt;chr&gt;         &lt;lgl&gt;     &lt;dbl&gt;        &lt;int&gt;
- 1 75-070  08            TRUE          6          498
- 2 75-001  01            TRUE          1          207
- 3 75-001  01            TRUE          2          207
- 4 75-001  01            TRUE          3          206
- 5 75-001  01            TRUE          4          206
- 6 75-001  01            TRUE          5          206
- 7 75-001  01            TRUE          6          204
- 8 75-001  01            TRUE          7          204
- 9 75-001  01            TRUE          8          202
-10 75-001  01            TRUE          9          202
+# A tibble: 5,566 x 6
+   USUBJID FLOCKSEQUENCE completed  WEEK CHICKENTOTAL CHICKENEXTOTAL
+   &lt;chr&gt;   &lt;chr&gt;         &lt;lgl&gt;     &lt;dbl&gt;        &lt;int&gt;          &lt;dbl&gt;
+ 1 75-070  08            TRUE          6          498              0
+ 2 75-001  01            TRUE          1          207              3
+ 3 75-001  01            TRUE          2          207              0
+ 4 75-001  01            TRUE          3          206              1
+ 5 75-001  01            TRUE          4          206              0
+ 6 75-001  01            TRUE          5          206              0
+ 7 75-001  01            TRUE          6          204              2
+ 8 75-001  01            TRUE          7          204              0
+ 9 75-001  01            TRUE          8          202              2
+10 75-001  01            TRUE          9          202              0
 # … with 5,556 more rows</code></pre>
 <p>No missing week:</p>
 <pre class="r"><code>&gt; missing_weeks(chicken)
@@ -774,8 +775,9 @@ There is no missing week.</code></pre>
 +                 sudden_death          = SUDDENDEATH,
 +                 nb_chicken            = CHICKENTOTAL,
 +                 chicken_disease_death = CHICKENDISEASEDEATH,
-+                 chicken_sudden_death  = CHICKENSUDDENDEATH) %&gt;% 
-+   dplyr::select(farm, flock, week, sampling, completed, nb_chicken, chicken_disease_death, chicken_sudden_death, dplyr::everything()) %&gt;% 
++                 chicken_sudden_death  = CHICKENSUDDENDEATH,
++                 nb_chicken_sold       = CHICKENEXTOTAL) %&gt;% 
++   dplyr::select(farm, flock, week, sampling, completed, nb_chicken, nb_chicken_sold, chicken_disease_death, chicken_sudden_death, dplyr::everything()) %&gt;% 
 +   write.csv(&quot;data/viparc.csv&quot;, FALSE, row.names = FALSE)</code></pre>
 <p>Note that, among the <code>clinical_signs</code>, <code>amu</code>, <code>chicken</code> and <code>samples</code> data frames, <code>samples</code> is the only one that contains rows only for the weeks where samples are taken. The three other data frames contain rows for all the weeks of all the flocks of all the farms. For this reason, after the merging, we have to replace the missing values in the <code>sampling</code> variable by <code>FALSE</code>.</p>
 </div>

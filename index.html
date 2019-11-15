@@ -305,7 +305,17 @@ $(document).ready(function () {
 <p>The data set, as a flat rectangular CSV file, can be downloaded from <a href="https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv">here</a>:</p>
 <pre class="r"><code>&gt; # install.packages(&quot;readr&quot;)
 &gt; viparc &lt;- readr::read_csv(&quot;https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv&quot;,
-+                           col_types = paste(c(&quot;ciillidd&quot;, rep(&quot;l&quot;, 6), rep(&quot;d&quot;, 45)), collapse = &quot;&quot;))</code></pre>
++                           col_types = paste(rep(c(&quot;c&quot;, &quot;i&quot;, &quot;l&quot;, &quot;i&quot;, &quot;d&quot;, &quot;l&quot;, &quot;d&quot;), c(1, 2, 2, 1, 3, 6, 45)), collapse = &quot;&quot;))
+Warning: Unnamed `col_types` should have the same length as `col_names`. Using smaller of the two.
+Warning: 5673 parsing failures.
+row         col expected actual                                                                          file
+  1 respiratory a double  FALSE &#39;https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv&#39;
+  2 respiratory a double  FALSE &#39;https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv&#39;
+  3 respiratory a double  FALSE &#39;https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv&#39;
+  4 respiratory a double  FALSE &#39;https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv&#39;
+  5 respiratory a double  FALSE &#39;https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv&#39;
+... ........... ........ ...... .............................................................................
+See problems(...) for more details.</code></pre>
 <p>The data frame contains 5566 weeks of observation (rows) and 59 variables (columns). The variables are</p>
 <ul>
 <li><strong>farm:</strong> farm ID;</li>
@@ -314,6 +324,7 @@ $(document).ready(function () {
 <li><strong>sampling:</strong> boolean informing whether there is feces sampling during the week (<code>TRUE</code>) or not (<code>FALSE</code>);</li>
 <li><strong>completed:</strong> boolean informing whether the flock is done (<code>TRUE</code>) or still ongoing (<code>FALSE</code>);</li>
 <li><strong>nb_chicken:</strong> total number of chicken in the farm;</li>
+<li><strong>nb_chicken_sold:</strong> total number of chicken sold from the farm;</li>
 <li><strong>chicken_disease_death</strong> number of chicken in the farm that died from disease between the previous and the current weeks;</li>
 <li><strong>chicken_sudden_death</strong> number of chicken in the farm that suddenly died (from other causes than the disease) between the previous and the current weeks;</li>
 <li><strong>respiratory, …, sudden_death:</strong> presence (<code>TRUE</code>) / absence (<code>FALSE</code>) of 6 clinical signs in the flock;</li>

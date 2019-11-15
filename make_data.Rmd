@@ -296,7 +296,7 @@ computing a variable indicating whether the cycle is finisheed.
   unname() %>% # because of the do.call() call that follows
   c(list(c("USUBJID", "MID_INOUT_SEQ"))) %>% 
   do.call(dplyr::left_join, .) %>%
-  dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK, CHICKENTOTAL, MID_INOUT_GridEvent_SEQ) %>% 
+  dplyr::select(USUBJID, FLOCKSEQUENCE, WEEK, CHICKENTOTAL, CHICKENEXTOTAL, MID_INOUT_GridEvent_SEQ) %>% 
 # CORRECTION:
   assign("tmp", ., 1) %>% # for reuse 3 lines below
   dplyr::filter(USUBJID == "75-070", FLOCKSEQUENCE == "08", MID_INOUT_GridEvent_SEQ == 6) %>% 
@@ -304,7 +304,8 @@ computing a variable indicating whether the cycle is finisheed.
   dplyr::bind_rows(dplyr::filter(tmp, !(USUBJID == "75-070" & FLOCKSEQUENCE == "08" & MID_INOUT_GridEvent_SEQ == 6))) %>% 
   dplyr::select(-MID_INOUT_GridEvent_SEQ) %>% 
 # (end of correction)
-  dplyr::mutate_at("CHICKENTOTAL", as.integer) %>% 
+  dplyr::mutate_at(c("CHICKENTOTAL", "CHICKENEXTOTAL"), as.integer) %>% 
+  dplyr::mutate_at("CHICKENEXTOTAL", tidyr::replace_na, 0) %>% 
   assign("tmp", ., 1) %>% # for reuse on the final line
   dplyr::group_by(USUBJID, FLOCKSEQUENCE) %>%             # | computing whether...
   dplyr::summarize(completed = min(CHICKENTOTAL) < 1) %>% # | ... the cycle is...
@@ -379,8 +380,9 @@ list(chicken, clinical_signs, amu, samples) %>% # chicken needs to be first beca
                 sudden_death          = SUDDENDEATH,
                 nb_chicken            = CHICKENTOTAL,
                 chicken_disease_death = CHICKENDISEASEDEATH,
-                chicken_sudden_death  = CHICKENSUDDENDEATH) %>% 
-  dplyr::select(farm, flock, week, sampling, completed, nb_chicken, chicken_disease_death, chicken_sudden_death, dplyr::everything()) %>% 
+                chicken_sudden_death  = CHICKENSUDDENDEATH,
+                nb_chicken_sold       = CHICKENEXTOTAL) %>% 
+  dplyr::select(farm, flock, week, sampling, completed, nb_chicken, nb_chicken_sold, chicken_disease_death, chicken_sudden_death, dplyr::everything()) %>% 
   write.csv("data/viparc.csv", FALSE, row.names = FALSE)
 ```
 
