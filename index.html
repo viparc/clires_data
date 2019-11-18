@@ -305,7 +305,7 @@ $(document).ready(function () {
 <p>The data set, as a flat rectangular CSV file, can be downloaded from <a href="https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv">here</a>:</p>
 <pre class="r"><code>&gt; # install.packages(&quot;readr&quot;)
 &gt; viparc &lt;- readr::read_csv(&quot;https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv&quot;,
-+                           col_types = paste(rep(c(&quot;c&quot;, &quot;i&quot;, &quot;l&quot;, &quot;i&quot;, &quot;d&quot;, &quot;l&quot;, &quot;d&quot;), c(1, 2, 2, 1, 3, 6, 45)), collapse = &quot;&quot;))</code></pre>
++                           col_types = paste(c(&quot;ciillidddllllll&quot;, rep(&quot;d&quot;, 45)), collapse = &quot;&quot;))</code></pre>
 <p>The data frame contains 5566 weeks of observation (rows) and 60 variables (columns). The variables are</p>
 <ul>
 <li><strong>farm:</strong> farm ID;</li>

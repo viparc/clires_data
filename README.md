@@ -13,21 +13,40 @@ The data set, as a flat rectangular CSV file, can be downloaded from
 ``` r
 # install.packages("readr")
 viparc <- readr::read_csv("https://raw.githubusercontent.com/viparc/clires_data/master/data/viparc.csv",
-                          col_types = paste(c("cii", rep("l", 6), rep("d", 45), "lil"), collapse = ""))
+                          col_types = paste(c("ciillidddllllll", rep("d", 45)), collapse = ""))
 ```
 
-The data frame contains 5391 weeks of observation (rows) and 57
+The data frame contains 5566 weeks of observation (rows) and 60
 variables (columns). The variables are
 
   - **farm:** farm ID;
   - **flock:** flock ID (in a given farm);
   - **week:** week number (in a given flock of a given farm);
-  - **respiratory, …, sudden\_death:** presence (`TRUE`) / absence
-    (`FALSE`) of 6 clinical signs in the flock;
-  - **amoxicillin\_g, …, unknown\_g:** mass, in g, of the 44
-    antimicriobial used in the flock;
+  - **sampling:** boolean informing whether there is feces sampling
+    during the week (`TRUE`) or not (`FALSE`);
   - **completed:** boolean informing whether the flock is done (`TRUE`)
     or still ongoing (`FALSE`);
   - **nb\_chicken:** total number of chicken in the farm;
-  - **sampling:** boolean informing whether there is feces sampling
-    during the week (`TRUE`) or not (`FALSE`).
+  - **nb\_chicken\_sold:** total number of chicken sold from the farm;
+  - **chicken\_disease\_death** number of chicken in the farm that died
+    from disease between the previous and the current weeks;
+  - **chicken\_sudden\_death** number of chicken in the farm that
+    suddenly died (from other causes than the disease) between the
+    previous and the current weeks;
+  - **respiratory, …, sudden\_death:** presence (`TRUE`) / absence
+    (`FALSE`) of 6 clinical signs in the flock;
+  - **chicken\_disease\_death**: number of chicken dying from disease
+    between the previous and the current weeks;
+  - **chicken\_sudden\_death**: number of chicken suddenly dying (from
+    other cause than disease) between the previous and the current
+    weeks;
+  - **amoxicillin\_g, …, unknown\_g:** mass, in g, of the 44
+    antimicriobial used in the flock.
+
+In addition, there is also information on the antimicrobial class of
+each antimicrobial used in the data set. These data can be download from
+here:
+
+``` r
+ab_classes <- readr::read_csv("https://raw.githubusercontent.com/viparc/clires_data/master/data/antimicrobial_classes.csv", col_types = "cc")
+```
